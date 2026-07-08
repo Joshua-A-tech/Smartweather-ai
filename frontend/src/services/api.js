@@ -1,27 +1,25 @@
 import axios from 'axios';
 
-// Use localhost:8000 for the backend
-const API_BASE_URL = 'http://localhost:8000';
-const API_V1_URL = 'http://localhost:8000/api/v1';
+// Use the deployed backend URL in production
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_BASE_URL = `${API_URL}/api/v1`;
 
 const api = axios.create({
-  baseURL: API_V1_URL,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
-// Weather API
 export const weatherAPI = {
   getCurrent: (deviceId = 'ESP32-001') => 
     api.get(`/weather/current?device_id=${deviceId}`),
   
-  getHistory: (deviceId, startTime, endTime, limit = 100) =>
-    api.get(`/weather/history?device_id=${deviceId}&start_time=${startTime}&end_time=${endTime}&limit=${limit}`),
+  getHistory: (deviceId, limit = 100) =>
+    api.get(`/weather/history?device_id=${deviceId}&limit=${limit}`),
 };
 
-// AI API
 export const aiAPI = {
   query: (question, deviceId = null) =>
     api.post('/ai/query', { question, device_id: deviceId }),
@@ -42,14 +40,9 @@ export const aiAPI = {
   stats: () => api.get('/ai/stats'),
 };
 
-// MQTT API
-export const mqttAPI = {
-  getStatus: () => api.get('/mqtt/status'),
-};
-
-// Health API (uses base URL without /api/v1)
+// Health API
 const healthApi = axios.create({
-  baseURL: 'http://localhost:8000',
+  baseURL: API_URL,
   timeout: 5000,
 });
 

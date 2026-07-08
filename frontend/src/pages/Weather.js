@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert, Button, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaTint, FaCompress, FaWind, 
-  FaCloudRain, FaClock, FaCloudSun, FaChartLine,
-  FaLightbulb, FaSun, FaMoon
+  FaThermometerHalf, FaCompress, 
+  FaCloudRain, FaClock, FaCloudSun,
+  FaSun, FaMoon
 } from 'react-icons/fa';
 import { weatherAPI } from '../services/api';
 
@@ -12,10 +12,6 @@ function Weather() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deviceId, setDeviceId] = useState('ESP32-001');
-
-  useEffect(() => {
-    fetchWeather();
-  }, [deviceId]);
 
   const fetchWeather = async () => {
     try {
@@ -30,6 +26,10 @@ function Weather() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchWeather();
+  }, [deviceId]);
 
   const handleDeviceChange = (e) => {
     setDeviceId(e.target.value);
@@ -113,9 +113,6 @@ function Weather() {
                   )}
                   <h2>{isRaining ? '🌧️ Raining' : '☀️ Dry'}</h2>
                   <p className="text-muted">Rain Status</p>
-                  {data.rain_percentage !== undefined && (
-                    <small className="text-muted">{data.rain_percentage}%</small>
-                  )}
                 </Card.Body>
               </Card>
             </Col>
@@ -128,10 +125,7 @@ function Weather() {
                     <FaSun size={40} className="text-warning mb-3" />
                   )}
                   <h2>{isDark ? '🌙 Dark' : '☀️ Light'}</h2>
-                  <p className="text-muted">Light Status</p>
-                  {data.light_analog !== undefined && (
-                    <small className="text-muted">{data.light_analog}</small>
-                  )}
+                  <p className="text-muted">Light Level</p>
                 </Card.Body>
               </Card>
             </Col>
@@ -196,7 +190,7 @@ function Weather() {
                       <strong>Light:</strong> {isDark ? '🌙 Dark' : '☀️ Light'} ({data.light_analog || '--'})
                     </li>
                     <li>
-                      <FaChartLine className="me-2 text-info" />
+                      <FaCompress className="me-2 text-info" />
                       <strong>Altitude:</strong> {data.altitude || '--'} m
                     </li>
                   </ul>

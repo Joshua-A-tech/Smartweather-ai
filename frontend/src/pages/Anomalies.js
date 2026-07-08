@@ -9,10 +9,6 @@ function Anomalies() {
   const [error, setError] = useState(null);
   const [deviceId, setDeviceId] = useState('ESP32-001');
 
-  useEffect(() => {
-    fetchAnomalies();
-  }, [deviceId]);
-
   const fetchAnomalies = async () => {
     try {
       setLoading(true);
@@ -26,6 +22,10 @@ function Anomalies() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAnomalies();
+  }, [deviceId]);
 
   const getSeverityBadge = (severity) => {
     const variants = {

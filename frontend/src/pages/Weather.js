@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert, Button, Form } from 'react-bootstrap';
 import { 
   FaThermometerHalf, FaTint, FaCompress, FaWind, 
-  FaCloudRain, FaSun, FaClock 
+  FaCloudRain, FaClock, FaCloudSun, FaChartLine,
+  FaLightbulb, FaSun, FaMoon
 } from 'react-icons/fa';
 import { weatherAPI } from '../services/api';
 
@@ -19,12 +20,12 @@ function Weather() {
   const fetchWeather = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await weatherAPI.getCurrent(deviceId);
       setWeather(response.data);
-      setError(null);
     } catch (err) {
-      setError('Failed to load weather data');
-      console.error(err);
+      setError('Failed to load weather data. Is the backend running?');
+      console.error('Weather fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -44,10 +45,17 @@ function Weather() {
   }
 
   if (error) {
-    return <Alert variant="danger">{error}</Alert>;
+    return (
+      <div>
+        <Alert variant="danger">{error}</Alert>
+        <Button variant="primary" onClick={fetchWeather}>Retry</Button>
+      </div>
+    );
   }
 
   const data = weather?.data || {};
+  const isRaining = data.is_raining || data.rainfall > 0;
+  const isDark = data.is_dark || false;
 
   return (
     <div>
@@ -60,7 +68,6 @@ function Weather() {
               <Form.Label>Select Device</Form.Label>
               <Form.Select value={deviceId} onChange={handleDeviceChange}>
                 <option value="ESP32-001">ESP32-001 (Garden)</option>
-                <option value="ESP32-002">ESP32-002 (Roof)</option>
               </Form.Select>
             </Form.Group>
           </Form>
@@ -73,72 +80,132 @@ function Weather() {
         </Col>
       </Row>
 
-      <Row>
-        <Col md={4} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaThermometerHalf size={40} className="text-danger mb-3" />
-              <h2>{data.temperature || '--'}°C</h2>
-              <p className="text-muted">Temperature</p>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaTint size={40} className="text-primary mb-3" />
-              <h2>{data.humidity || '--'}%</h2>
-              <p className="text-muted">Humidity</p>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaCompress size={40} className="text-success mb-3" />
-              <h2>{data.pressure || '--'} hPa</h2>
-              <p className="text-muted">Barometric Pressure</p>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      <Row>
-        <Col md={6} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaWind size={40} className="text-info mb-3" />
-              <h2>{data.wind_speed || '--'} km/h</h2>
-              <p className="text-muted">Wind Speed</p>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={6} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaCloudRain size={40} className="text-primary mb-3" />
-              <h2>{data.rainfall || '--'} mm</h2>
-              <p className="text-muted">Rainfall</p>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card className="mt-3">
-        <Card.Body>
-          <h5 className="mb-3">Device Information</h5>
+      {data.message ? (
+        <Alert variant="warning">{data.message}</Alert>
+      ) : (
+        <>
           <Row>
-            <Col md={6}>
-              <p><strong>Device ID:</strong> {data.device_id || 'Unknown'}</p>
-              <p><strong>Last Updated:</strong> {data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}</p>
+            <Col md={3} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  <FaThermometerHalf size={40} className="text-danger mb-3" />
+                  <h2>{data.temperature || '--'}°C</h2>
+                  <p className="text-muted">Temperature</p>
+                </Card.Body>
+              </Card>
             </Col>
-            <Col md={6}>
-              <p><strong>Status:</strong> <span className="badge bg-success">Online</span></p>
-              <p><strong>Battery:</strong> {data.battery_voltage || 'N/A'} V</p>
+            <Col md={3} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  <FaCompress size={40} className="text-success mb-3" />
+                  <h2>{data.pressure || '--'} hPa</h2>
+                  <p className="text-muted">Pressure</p>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  {isRaining ? (
+                    <FaCloudRain size={40} className="text-primary mb-3" />
+                  ) : (
+                    <FaCloudSun size={40} className="text-warning mb-3" />
+                  )}
+                  <h2>{isRaining ? '🌧️ Raining' : '☀️ Dry'}</h2>
+                  <p className="text-muted">Rain Status</p>
+                  {data.rain_percentage !== undefined && (
+                    <small className="text-muted">{data.rain_percentage}%</small>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3} className="mb-3">
+              <Card className="text-center h-100">
+                <Card.Body>
+                  {isDark ? (
+                    <FaMoon size={40} className="text-secondary mb-3" />
+                  ) : (
+                    <FaSun size={40} className="text-warning mb-3" />
+                  )}
+                  <h2>{isDark ? '🌙 Dark' : '☀️ Light'}</h2>
+                  <p className="text-muted">Light Status</p>
+                  {data.light_analog !== undefined && (
+                    <small className="text-muted">{data.light_analog}</small>
+                  )}
+                </Card.Body>
+              </Card>
             </Col>
           </Row>
-        </Card.Body>
-      </Card>
+
+          <Row>
+            <Col md={6} className="mb-3">
+              <Card>
+                <Card.Body>
+                  <h5 className="mb-3">Sensor Details</h5>
+                  <Row>
+                    <Col sm={6}>
+                      <p><strong>🌡️ Temperature:</strong> {data.temperature || '--'}°C</p>
+                      <p><strong>💨 Pressure:</strong> {data.pressure || '--'} hPa</p>
+                      <p><strong>⛰️ Altitude:</strong> {data.altitude || '--'} m</p>
+                    </Col>
+                    <Col sm={6}>
+                      <p><strong>☔ Rainfall:</strong> {data.rainfall || 0} mm</p>
+                      <p><strong>💧 Rain %:</strong> {data.rain_percentage || 0}%</p>
+                      <p><strong>🔦 Light:</strong> {data.light_analog || '--'}</p>
+                    </Col>
+                  </Row>
+                  <hr />
+                  <Row>
+                    <Col sm={6}>
+                      <p><strong>📱 Device:</strong> {data.device_id || 'Unknown'}</p>
+                    </Col>
+                    <Col sm={6}>
+                      <p><strong>🕐 Updated:</strong> {data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}</p>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6} className="mb-3">
+              <Card>
+                <Card.Body>
+                  <h5 className="mb-3">Weather Insights</h5>
+                  <ul className="list-unstyled">
+                    <li className="mb-2">
+                      <FaThermometerHalf className="me-2 text-danger" />
+                      <strong>Temperature:</strong> {data.temperature || '--'}°C
+                    </li>
+                    <li className="mb-2">
+                      <FaCompress className="me-2 text-success" />
+                      <strong>Pressure:</strong> {data.pressure || '--'} hPa
+                    </li>
+                    <li className="mb-2">
+                      {isRaining ? (
+                        <FaCloudRain className="me-2 text-primary" />
+                      ) : (
+                        <FaCloudSun className="me-2 text-warning" />
+                      )}
+                      <strong>Rain:</strong> {isRaining ? '🌧️ Raining' : '☀️ Dry'} ({data.rain_percentage || 0}%)
+                    </li>
+                    <li className="mb-2">
+                      {isDark ? (
+                        <FaMoon className="me-2 text-secondary" />
+                      ) : (
+                        <FaSun className="me-2 text-warning" />
+                      )}
+                      <strong>Light:</strong> {isDark ? '🌙 Dark' : '☀️ Light'} ({data.light_analog || '--'})
+                    </li>
+                    <li>
+                      <FaChartLine className="me-2 text-info" />
+                      <strong>Altitude:</strong> {data.altitude || '--'} m
+                    </li>
+                  </ul>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </>
+      )}
     </div>
   );
 }

@@ -14,3 +14,6 @@ numpy
 scikit-learn
 torch
 sentence-transformers
+psycopg2-binary==2.9.9
+psycopg2-binary==2.9.9
+psycopg2-binary==2.9.9

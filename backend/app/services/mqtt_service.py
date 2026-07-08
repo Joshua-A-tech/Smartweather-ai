@@ -1,5 +1,5 @@
 """
-MQTT service for subscribing to weather data with TLS support
+MQTT service for subscribing to weather data
 """
 
 import json
@@ -20,16 +20,13 @@ class MQTTService:
         self.client: Optional[mqtt.Client] = None
         self.callbacks: Dict[str, Callable] = {}
         self.is_connected = False
-        self.reconnect_attempts = 0
-        self.max_reconnect_attempts = 10
         
     def _on_connect(self, client, userdata, flags, rc):
         """Callback for MQTT connection"""
+        logger.info(f"📡 MQTT Connect callback - rc: {rc}")
         if rc == 0:
             self.is_connected = True
-            self.reconnect_attempts = 0
             logger.info("✅ Connected to HiveMQ Cloud!")
-            # Subscribe to topics
             client.subscribe(settings.MQTT_TOPIC)
             logger.info(f"✅ Subscribed to {settings.MQTT_TOPIC}")
         else:
@@ -50,8 +47,7 @@ class MQTTService:
         """Callback for MQTT disconnection"""
         self.is_connected = False
         if rc != 0:
-            logger.warning(f"⚠️ Unexpected MQTT disconnection, rc={rc}")
-            logger.info("🔄 Attempting to reconnect...")
+            logger.warning(f"⚠️ MQTT disconnected unexpectedly, rc={rc}")
     
     def _on_message(self, client, userdata, msg):
         """Callback for MQTT messages"""
@@ -59,13 +55,9 @@ class MQTTService:
             payload = json.loads(msg.payload.decode())
             logger.info(f"📩 Received message on {msg.topic}")
             
-            # Process message based on topic
             if msg.topic.startswith("weather/sensors/"):
                 self._process_weather_data(payload)
-            elif msg.topic.startswith("weather/device/"):
-                self._process_device_data(payload)
             
-            # Trigger any registered callbacks
             if msg.topic in self.callbacks:
                 self.callbacks[msg.topic](payload)
                 
@@ -86,11 +78,7 @@ class MQTTService:
             light = payload.get("light")
             rain_percentage = payload.get("rain_percentage", 0)
             
-            logger.info(f"📊 Weather Data from {device_id}:")
-            logger.info(f"   🌡️ Temperature: {temperature}°C")
-            logger.info(f"   💨 Pressure: {pressure} hPa")
-            logger.info(f"   ☔ Rain: {is_raining}")
-            logger.info(f"   💡 Light: {light}")
+            logger.info(f"📊 Weather from {device_id}: {temperature}°C, {pressure} hPa")
             
             # Save to Supabase
             supabase = get_supabase_client()
@@ -114,12 +102,8 @@ class MQTTService:
         except Exception as e:
             logger.error(f"❌ Error processing weather data: {e}")
     
-    def _process_device_data(self, payload: Dict[str, Any]):
-        """Process incoming device data"""
-        logger.info(f"📱 Device data received: {payload}")
-    
     def connect(self):
-        """Connect to HiveMQ Cloud with TLS"""
+        """Connect to HiveMQ Cloud"""
         try:
             # Check if credentials are set
             if not settings.HIVEMQ_HOST or settings.HIVEMQ_HOST == "localhost":
@@ -129,8 +113,8 @@ class MQTTService:
             logger.info(f"🔗 Connecting to HiveMQ at {settings.HIVEMQ_HOST}:{settings.HIVEMQ_PORT}")
             logger.info(f"   Username: {settings.HIVEMQ_USERNAME}")
             
-            # Create MQTT client
-            self.client = mqtt.Client()
+            # Create MQTT client with callback API version 2
+            self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
             
             # Set credentials if provided
             if settings.HIVEMQ_USERNAME and settings.HIVEMQ_PASSWORD:
@@ -144,19 +128,17 @@ class MQTTService:
             self.client.on_disconnect = self._on_disconnect
             self.client.on_message = self._on_message
             
-            # IMPORTANT: Use TLS for secure connection (port 8883)
+            # Use TLS for secure connection
             if settings.HIVEMQ_PORT == 8883:
                 logger.info("🔒 Using TLS/SSL for secure connection")
                 self.client.tls_set()
-            else:
-                logger.warning("⚠️ Non-TLS connection (port 1883)")
             
-            # Connect
+            # Connect with keepalive
             logger.info("📡 Attempting to connect...")
             self.client.connect(
                 settings.HIVEMQ_HOST,
                 settings.HIVEMQ_PORT,
-                60
+                60  # Keepalive
             )
             
             # Start loop in background

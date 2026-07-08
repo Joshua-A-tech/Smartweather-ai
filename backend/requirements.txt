@@ -10,3 +10,7 @@ requests
 python-multipart
 supabase
 groq
+numpy
+scikit-learn
+torch
+sentence-transformers

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Spinner, Alert, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaCompress, FaCloudRain, FaCloudSun, FaRobot, FaSun, FaMoon
+  FaThermometerHalf, FaCompress, 
+  FaCloudRain, FaCloudSun, FaRobot,
+  FaSun, FaMoon, FaLightbulb
 } from 'react-icons/fa';
 import { Line } from 'react-chartjs-2';
 import {
@@ -56,7 +58,6 @@ function Dashboard() {
       }
     } catch (err) {
       console.error('Error fetching devices:', err);
-      // Fallback: use default device
       setDevices([{ device_id: 'ESP32-001', name: 'Garden Sensor' }]);
     }
   };
@@ -112,7 +113,8 @@ function Dashboard() {
   const forecastData = forecast?.forecast || [];
   
   const isRaining = weatherData.is_raining || weatherData.rainfall > 0;
-  const isDark = weatherData.light ? weatherData.light < 1000 : false;
+  const lightValue = weatherData.light !== undefined ? weatherData.light : 0;
+  const isDark = lightValue < 500;
 
   // Prepare chart data
   const chartData = {
@@ -230,6 +232,7 @@ function Dashboard() {
               )}
               <Card.Title>{isDark ? '🌙 Dark' : '☀️ Light'}</Card.Title>
               <Card.Text className="text-muted">Light Level</Card.Text>
+              <small className="text-muted">{lightValue}</small>
             </Card.Body>
           </Card>
         </Col>

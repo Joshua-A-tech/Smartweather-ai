@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert, Button, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaCompress, FaCloudRain, FaClock, FaCloudSun, FaSun, FaMoon
+  FaThermometerHalf, FaCompress, 
+  FaCloudRain, FaClock, FaCloudSun,
+  FaSun, FaMoon, FaLightbulb
 } from 'react-icons/fa';
 import { weatherAPI } from '../services/api';
 
@@ -75,7 +77,8 @@ function Weather() {
 
   const data = weather?.data || {};
   const isRaining = data.is_raining || data.rainfall > 0;
-  const isDark = data.light ? data.light < 1000 : false;
+  const lightValue = data.light !== undefined ? data.light : 0;
+  const isDark = lightValue < 500;
 
   return (
     <div>
@@ -113,7 +116,7 @@ function Weather() {
               <Card className="text-center h-100">
                 <Card.Body>
                   <FaThermometerHalf size={40} className="text-danger mb-3" />
-                  <h2>{data.temperature || '--'}°C</h2>
+                  <h2>{data.temperature ? data.temperature.toFixed(1) : '--'}°C</h2>
                   <p className="text-muted">Temperature</p>
                 </Card.Body>
               </Card>
@@ -122,7 +125,7 @@ function Weather() {
               <Card className="text-center h-100">
                 <Card.Body>
                   <FaCompress size={40} className="text-success mb-3" />
-                  <h2>{data.pressure || '--'} hPa</h2>
+                  <h2>{data.pressure ? data.pressure.toFixed(1) : '--'} hPa</h2>
                   <p className="text-muted">Pressure</p>
                 </Card.Body>
               </Card>
@@ -150,6 +153,7 @@ function Weather() {
                   )}
                   <h2>{isDark ? '🌙 Dark' : '☀️ Light'}</h2>
                   <p className="text-muted">Light Level</p>
+                  <small className="text-muted">{lightValue}</small>
                 </Card.Body>
               </Card>
             </Col>
@@ -163,12 +167,13 @@ function Weather() {
                   <Row>
                     <Col sm={6}>
                       <p><strong>🌡️ Temperature:</strong> {data.temperature || '--'}°C</p>
+                      <p><strong>💧 Humidity:</strong> {data.humidity || '--'}%</p>
                       <p><strong>💨 Pressure:</strong> {data.pressure || '--'} hPa</p>
                       <p><strong>⛰️ Altitude:</strong> {data.altitude || '--'} m</p>
                     </Col>
                     <Col sm={6}>
                       <p><strong>☔ Rainfall:</strong> {data.rainfall || 0} mm</p>
-                      <p><strong>💡 Light:</strong> {data.light || '--'}</p>
+                      <p><strong>💡 Light:</strong> {lightValue}</p>
                       <p><strong>📍 Location:</strong> {data.location || 'Unknown'}</p>
                     </Col>
                   </Row>
@@ -206,12 +211,8 @@ function Weather() {
                       <strong>Rain:</strong> {isRaining ? '🌧️ Raining' : '☀️ Dry'}
                     </li>
                     <li>
-                      {isDark ? (
-                        <FaMoon className="me-2 text-secondary" />
-                      ) : (
-                        <FaSun className="me-2 text-warning" />
-                      )}
-                      <strong>Light:</strong> {isDark ? '🌙 Dark' : '☀️ Light'} ({data.light || '--'})
+                      <FaLightbulb className="me-2 text-warning" />
+                      <strong>Light:</strong> {lightValue} {isDark ? '(🌙 Dark)' : '(☀️ Light)'}
                     </li>
                   </ul>
                 </Card.Body>

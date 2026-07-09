@@ -12,3 +12,6 @@ supabase
 groq
 psycopg2-binary
 numpy
+scikit-learn
+torch
+sentence-transformers

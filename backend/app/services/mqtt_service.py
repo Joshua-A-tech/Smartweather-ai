@@ -1,5 +1,5 @@
 """
-MQTT service with multi-device support
+MQTT service with multi-device support and error handling
 """
 
 import json
@@ -42,6 +42,7 @@ class MQTTService:
                 'Prefer': 'return=representation'
             }
             
+            logger.info(f"📤 Saving to Supabase: {data}")
             response = requests.post(url, headers=headers, json=data)
             
             if response.status_code in [200, 201]:
@@ -52,45 +53,6 @@ class MQTTService:
         except Exception as e:
             logger.error(f"❌ Error saving to Supabase: {e}")
     
-    def _process_weather_data(self, payload: Dict[str, Any]):
-        """Process incoming weather data for any device"""
-        try:
-            device_id = payload.get("device_id", "unknown")
-            device_name = payload.get("device_name", "")
-            location = payload.get("location", "")
-            
-            temperature = payload.get("temperature")
-            pressure = payload.get("pressure")
-            altitude = payload.get("altitude")
-            rainfall = payload.get("rainfall", 0)
-            is_raining = payload.get("is_raining", False)
-            light = payload.get("light")
-            rain_percentage = payload.get("rain_percentage", 0)
-            uptime = payload.get("uptime", 0)
-            
-            logger.info(f"📊 Weather from {device_id} ({device_name}): {temperature}°C, {pressure} hPa")
-            
-            # Save to Supabase with device_id
-            data = {
-                'device_id': device_id,
-                'device_name': device_name,
-                'location': location,
-                'temperature': temperature,
-                'pressure': pressure,
-                'altitude': altitude,
-                'rainfall': rainfall,
-                'is_raining': is_raining,
-                'light': light,
-                'rain_percentage': rain_percentage,
-                'uptime': uptime,
-                'created_at': datetime.now().isoformat()
-            }
-            
-            self._save_to_supabase(data)
-            
-        except Exception as e:
-            logger.error(f"❌ Error processing weather data: {e}")
-    
     def _on_message(self, client, userdata, msg):
         """Callback for MQTT messages"""
         try:
@@ -98,9 +60,42 @@ class MQTTService:
             logger.info(f"📩 Received message on {msg.topic}")
             
             if msg.topic.startswith("weather/sensors/"):
-                self._process_weather_data(payload)
-            elif msg.topic.startswith("weather/status/"):
-                self._process_status_data(payload)
+                # Extract all fields with defaults
+                device_id = payload.get("device_id", "unknown")
+                device_name = payload.get("device_name", "")
+                location = payload.get("location", "")
+                
+                temperature = payload.get("temperature")
+                pressure = payload.get("pressure")
+                altitude = payload.get("altitude")
+                rainfall = payload.get("rainfall", 0)
+                is_raining = payload.get("is_raining", False)
+                light = payload.get("light")
+                rain_percentage = payload.get("rain_percentage", 0)
+                uptime = payload.get("uptime", 0)
+                
+                logger.info(f"📊 Weather from {device_id}: {temperature}°C, {pressure} hPa")
+                
+                # Prepare data for Supabase
+                data = {
+                    'device_id': device_id,
+                    'device_name': device_name,
+                    'location': location,
+                    'temperature': temperature,
+                    'pressure': pressure,
+                    'altitude': altitude,
+                    'rainfall': rainfall,
+                    'is_raining': is_raining,
+                    'light': light,
+                    'rain_percentage': rain_percentage,
+                    'uptime': uptime,
+                    'created_at': datetime.now().isoformat()
+                }
+                
+                # Remove None values
+                data = {k: v for k, v in data.items() if v is not None}
+                
+                self._save_to_supabase(data)
             
             if msg.topic in self.callbacks:
                 self.callbacks[msg.topic](payload)
@@ -109,39 +104,6 @@ class MQTTService:
             logger.error(f"❌ Invalid JSON: {msg.payload}")
         except Exception as e:
             logger.error(f"❌ Error processing message: {e}")
-    
-    def _process_status_data(self, payload: Dict[str, Any]):
-        """Process device status data"""
-        try:
-            device_id = payload.get("device_id", "unknown")
-            status = payload.get("status", "unknown")
-            
-            logger.info(f"📱 Device {device_id} is {status}")
-            
-            # Update device status in Supabase
-            url = f"{settings.SUPABASE_URL}/rest/v1/devices"
-            headers = {
-                'apikey': settings.SUPABASE_KEY,
-                'Authorization': f'Bearer {settings.SUPABASE_KEY}',
-                'Content-Type': 'application/json'
-            }
-            
-            data = {
-                'device_id': device_id,
-                'last_seen': datetime.now().isoformat(),
-                'is_active': status == "online"
-            }
-            
-            # Upsert device status
-            response = requests.post(url, headers=headers, json=data, params={'on_conflict': 'device_id'})
-            
-            if response.status_code in [200, 201]:
-                logger.info(f"✅ Device {device_id} status updated")
-            else:
-                logger.error(f"❌ Failed to update device status: {response.text}")
-                
-        except Exception as e:
-            logger.error(f"❌ Error updating device status: {e}")
     
     def connect(self):
         """Connect to HiveMQ Cloud"""

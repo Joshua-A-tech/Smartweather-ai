@@ -1,18 +1,15 @@
-# Use a specific Python version that's compatible with your dependencies
-FROM python:3.11-slim-bookworm
+# Use Python 3.11-slim with build tools
+FROM python:3.11-slim
 
-# Install Rust and build tools (needed for pydantic-core)
+# Install system dependencies for psycopg2
 RUN apt-get update && apt-get install -y \
-    curl \
     gcc \
     g++ \
     make \
-    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && /root/.cargo/bin/rustc --version \
+    python3-dev \
+    libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
-
-# Set environment variables for Cargo
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
 
@@ -20,10 +17,10 @@ WORKDIR /app
 COPY backend/requirements.txt .
 
 # Install Python dependencies
-RUN pip install --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy the rest of the backend
 COPY backend/ .
 
 # Set environment variables

@@ -1,38 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert, Button, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaCompress, 
-  FaCloudRain, FaClock, FaCloudSun,
-  FaSun, FaMoon
+  FaThermometerHalf, FaCompress, FaCloudRain, FaClock, FaCloudSun, FaSun, FaMoon
 } from 'react-icons/fa';
 import { weatherAPI } from '../services/api';
 
 function Weather() {
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState('ESP32-001');
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [deviceId, setDeviceId] = useState('ESP32-001');
+
+  useEffect(() => {
+    fetchDevices();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDevice) {
+      fetchWeather();
+    }
+  }, [selectedDevice]);
+
+  const fetchDevices = async () => {
+    try {
+      const response = await weatherAPI.getDevices();
+      if (response.data && response.data.devices) {
+        setDevices(response.data.devices);
+        if (response.data.devices.length > 0) {
+          setSelectedDevice(response.data.devices[0].device_id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching devices:', err);
+      setDevices([{ device_id: 'ESP32-001', name: 'Garden Sensor' }]);
+    }
+  };
 
   const fetchWeather = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await weatherAPI.getCurrent(deviceId);
+      const response = await weatherAPI.getCurrent(selectedDevice);
       setWeather(response.data);
     } catch (err) {
-      setError('Failed to load weather data. Is the backend running?');
-      console.error('Weather fetch error:', err);
+      setError('Failed to load weather data');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchWeather();
-  }, [deviceId]);
-
   const handleDeviceChange = (e) => {
-    setDeviceId(e.target.value);
+    setSelectedDevice(e.target.value);
   };
 
   if (loading) {
@@ -55,7 +75,7 @@ function Weather() {
 
   const data = weather?.data || {};
   const isRaining = data.is_raining || data.rainfall > 0;
-  const isDark = data.is_dark || false;
+  const isDark = data.light ? data.light < 1000 : false;
 
   return (
     <div>
@@ -66,8 +86,12 @@ function Weather() {
           <Form>
             <Form.Group>
               <Form.Label>Select Device</Form.Label>
-              <Form.Select value={deviceId} onChange={handleDeviceChange}>
-                <option value="ESP32-001">ESP32-001 (Garden)</option>
+              <Form.Select value={selectedDevice} onChange={handleDeviceChange}>
+                {devices.map(device => (
+                  <option key={device.device_id} value={device.device_id}>
+                    {device.name || device.device_id} {device.location ? `(${device.location})` : ''}
+                  </option>
+                ))}
               </Form.Select>
             </Form.Group>
           </Form>
@@ -144,14 +168,14 @@ function Weather() {
                     </Col>
                     <Col sm={6}>
                       <p><strong>☔ Rainfall:</strong> {data.rainfall || 0} mm</p>
-                      <p><strong>💧 Rain %:</strong> {data.rain_percentage || 0}%</p>
-                      <p><strong>🔦 Light:</strong> {data.light_analog || '--'}</p>
+                      <p><strong>💡 Light:</strong> {data.light || '--'}</p>
+                      <p><strong>📍 Location:</strong> {data.location || 'Unknown'}</p>
                     </Col>
                   </Row>
                   <hr />
                   <Row>
                     <Col sm={6}>
-                      <p><strong>📱 Device:</strong> {data.device_id || 'Unknown'}</p>
+                      <p><strong>📱 Device:</strong> {data.device_name || data.device_id || 'Unknown'}</p>
                     </Col>
                     <Col sm={6}>
                       <p><strong>🕐 Updated:</strong> {data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A'}</p>
@@ -179,19 +203,15 @@ function Weather() {
                       ) : (
                         <FaCloudSun className="me-2 text-warning" />
                       )}
-                      <strong>Rain:</strong> {isRaining ? '🌧️ Raining' : '☀️ Dry'} ({data.rain_percentage || 0}%)
+                      <strong>Rain:</strong> {isRaining ? '🌧️ Raining' : '☀️ Dry'}
                     </li>
-                    <li className="mb-2">
+                    <li>
                       {isDark ? (
                         <FaMoon className="me-2 text-secondary" />
                       ) : (
                         <FaSun className="me-2 text-warning" />
                       )}
-                      <strong>Light:</strong> {isDark ? '🌙 Dark' : '☀️ Light'} ({data.light_analog || '--'})
-                    </li>
-                    <li>
-                      <FaCompress className="me-2 text-info" />
-                      <strong>Altitude:</strong> {data.altitude || '--'} m
+                      <strong>Light:</strong> {isDark ? '🌙 Dark' : '☀️ Light'} ({data.light || '--'})
                     </li>
                   </ul>
                 </Card.Body>

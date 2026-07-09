@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Spinner, Alert } from 'react-bootstrap';
+import { Row, Col, Card, Spinner, Alert, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaCompress, 
-  FaCloudRain, FaCloudSun, FaRobot,
-  FaSun, FaMoon
+  FaThermometerHalf, FaCompress, FaCloudRain, FaCloudSun, FaRobot, FaSun, FaMoon
 } from 'react-icons/fa';
 import { Line } from 'react-chartjs-2';
 import {
@@ -29,6 +27,8 @@ ChartJS.register(
 );
 
 function Dashboard() {
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState('ESP32-001');
   const [weather, setWeather] = useState(null);
   const [forecast, setForecast] = useState(null);
   const [health, setHealth] = useState(null);
@@ -36,8 +36,30 @@ function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    fetchDevices();
   }, []);
+
+  useEffect(() => {
+    if (selectedDevice) {
+      fetchDashboardData();
+    }
+  }, [selectedDevice]);
+
+  const fetchDevices = async () => {
+    try {
+      const response = await weatherAPI.getDevices();
+      if (response.data && response.data.devices) {
+        setDevices(response.data.devices);
+        if (response.data.devices.length > 0) {
+          setSelectedDevice(response.data.devices[0].device_id);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching devices:', err);
+      // Fallback: use default device
+      setDevices([{ device_id: 'ESP32-001', name: 'Garden Sensor' }]);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -45,8 +67,8 @@ function Dashboard() {
       setError(null);
       
       const [weatherRes, forecastRes, healthRes] = await Promise.all([
-        weatherAPI.getCurrent('ESP32-001'),
-        aiAPI.getForecast('ESP32-001', 24),
+        weatherAPI.getCurrent(selectedDevice),
+        aiAPI.getForecast(selectedDevice, 24),
         healthAPI.check()
       ]);
       
@@ -56,10 +78,14 @@ function Dashboard() {
       
     } catch (err) {
       console.error('Dashboard error:', err);
-      setError('Failed to load data from server. Make sure the backend is running.');
+      setError('Failed to load data from server.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeviceChange = (e) => {
+    setSelectedDevice(e.target.value);
   };
 
   if (loading) {
@@ -86,9 +112,9 @@ function Dashboard() {
   const forecastData = forecast?.forecast || [];
   
   const isRaining = weatherData.is_raining || weatherData.rainfall > 0;
-  const isDark = weatherData.is_dark || false;
+  const isDark = weatherData.light ? weatherData.light < 1000 : false;
 
-  // Prepare chart data - ONLY temperature (since we don't have humidity)
+  // Prepare chart data
   const chartData = {
     labels: forecastData.map(f => `+${f.hour}h`),
     datasets: [
@@ -98,8 +124,7 @@ function Dashboard() {
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.2)',
         tension: 0.4,
-        fill: true,
-      }
+      },
     ],
   };
 
@@ -111,11 +136,7 @@ function Dashboard() {
       },
       title: {
         display: true,
-        text: '24-Hour Temperature Forecast (LSTM Model)',
-        font: {
-          size: 16,
-          weight: 'bold'
-        }
+        text: '24-Hour Temperature Forecast',
       },
     },
     scales: {
@@ -125,12 +146,6 @@ function Dashboard() {
           display: true,
           text: 'Temperature (°C)'
         }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Hours Ahead'
-        }
       }
     },
   };
@@ -139,6 +154,29 @@ function Dashboard() {
     <div>
       <h1 className="mb-4">Dashboard</h1>
       
+      {/* Device Selector */}
+      <Row className="mb-4">
+        <Col md={4}>
+          <Form>
+            <Form.Group>
+              <Form.Label>Select Device</Form.Label>
+              <Form.Select value={selectedDevice} onChange={handleDeviceChange}>
+                {devices.map(device => (
+                  <option key={device.device_id} value={device.device_id}>
+                    {device.name || device.device_id} {device.location ? `(${device.location})` : ''}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
+          </Form>
+        </Col>
+        <Col md={8} className="text-end">
+          <small className="text-muted">
+            {devices.length} device(s) connected
+          </small>
+        </Col>
+      </Row>
+
       {/* Health Status */}
       <Alert variant={health?.status === 'operational' ? 'success' : 'warning'} className="mb-4">
         <strong>System Status:</strong> {health?.status || 'Unknown'} 
@@ -149,7 +187,7 @@ function Dashboard() {
         )}
       </Alert>
 
-      {/* Weather Cards - Row 1 */}
+      {/* Weather Cards */}
       <Row className="mb-4">
         <Col md={3} sm={6} className="mb-3">
           <Card className="text-center h-100">
@@ -197,38 +235,7 @@ function Dashboard() {
         </Col>
       </Row>
 
-      {/* Weather Cards - Row 2 */}
-      <Row className="mb-4">
-        <Col md={4} sm={6} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaCloudSun size={30} className="text-warning mb-2" />
-              <Card.Title>{weatherData.altitude ? weatherData.altitude.toFixed(1) : '--'} m</Card.Title>
-              <Card.Text className="text-muted">Altitude</Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4} sm={6} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaCloudRain size={30} className="text-primary mb-2" />
-              <Card.Title>{weatherData.rainfall ? weatherData.rainfall.toFixed(2) : '0.00'} mm</Card.Title>
-              <Card.Text className="text-muted">Rainfall</Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={4} sm={6} className="mb-3">
-          <Card className="text-center h-100">
-            <Card.Body>
-              <FaThermometerHalf size={30} className="text-info mb-2" />
-              <Card.Title>{weatherData.rain_percentage || 0}%</Card.Title>
-              <Card.Text className="text-muted">Rain Probability</Card.Text>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Chart */}
+      {/* Charts */}
       <Row>
         <Col lg={8} className="mb-4">
           <Card>
@@ -265,7 +272,9 @@ function Dashboard() {
               </div>
               <hr />
               <small className="text-muted">
-                Last updated: {weatherData.timestamp ? new Date(weatherData.timestamp).toLocaleString() : 'N/A'}
+                Device: {weatherData.device_name || selectedDevice}
+                <br />
+                Updated: {weatherData.timestamp ? new Date(weatherData.timestamp).toLocaleString() : 'N/A'}
               </small>
             </Card.Body>
           </Card>

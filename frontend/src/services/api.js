@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Use the deployed backend URL in production
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const API_BASE_URL = `${API_URL}/api/v1`;
 
@@ -13,9 +12,14 @@ const api = axios.create({
 });
 
 export const weatherAPI = {
+  // Get all devices
+  getDevices: () => api.get('/devices'),
+  
+  // Get current weather for a specific device
   getCurrent: (deviceId = 'ESP32-001') => 
     api.get(`/weather/current?device_id=${deviceId}`),
   
+  // Get history for a specific device
   getHistory: (deviceId, limit = 100) =>
     api.get(`/weather/history?device_id=${deviceId}&limit=${limit}`),
 };
@@ -30,17 +34,10 @@ export const aiAPI = {
   getAnomalies: (deviceId, hours = 24) =>
     api.get(`/ai/anomalies?device_id=${deviceId}&hours=${hours}`),
   
-  ingest: (deviceId, limit = 100) =>
-    api.post(`/ai/ingest?device_id=${deviceId}&limit=${limit}`),
-  
-  predict: (deviceId, hoursAhead = 24) =>
-    api.post('/ai/predict', { device_id: deviceId, hours_ahead: hoursAhead }),
-  
   test: () => api.get('/ai/test'),
   stats: () => api.get('/ai/stats'),
 };
 
-// Health API
 const healthApi = axios.create({
   baseURL: API_URL,
   timeout: 5000,

@@ -1,5 +1,5 @@
 """
-MQTT service with multi-device support and error handling
+MQTT service with multi-device support
 """
 
 import json
@@ -42,7 +42,6 @@ class MQTTService:
                 'Prefer': 'return=representation'
             }
             
-            logger.info(f"📤 Saving to Supabase: {data}")
             response = requests.post(url, headers=headers, json=data)
             
             if response.status_code in [200, 201]:
@@ -60,12 +59,12 @@ class MQTTService:
             logger.info(f"📩 Received message on {msg.topic}")
             
             if msg.topic.startswith("weather/sensors/"):
-                # Extract all fields with defaults
                 device_id = payload.get("device_id", "unknown")
                 device_name = payload.get("device_name", "")
                 location = payload.get("location", "")
                 
                 temperature = payload.get("temperature")
+                humidity = payload.get("humidity", 65.0)  # Default humidity
                 pressure = payload.get("pressure")
                 altitude = payload.get("altitude")
                 rainfall = payload.get("rainfall", 0)
@@ -76,12 +75,13 @@ class MQTTService:
                 
                 logger.info(f"📊 Weather from {device_id}: {temperature}°C, {pressure} hPa")
                 
-                # Prepare data for Supabase
+                # Prepare data for Supabase (include humidity)
                 data = {
                     'device_id': device_id,
                     'device_name': device_name,
                     'location': location,
                     'temperature': temperature,
+                    'humidity': humidity,  # Added humidity
                     'pressure': pressure,
                     'altitude': altitude,
                     'rainfall': rainfall,

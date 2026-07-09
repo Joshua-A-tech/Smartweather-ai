@@ -1,5 +1,5 @@
 """
-MQTT service with multi-device support
+MQTT service - Automatically saves data to Supabase
 """
 
 import json
@@ -53,48 +53,39 @@ class MQTTService:
             logger.error(f"❌ Error saving to Supabase: {e}")
     
     def _on_message(self, client, userdata, msg):
-        """Callback for MQTT messages"""
+        """Callback for MQTT messages - AUTO-SAVES to Supabase"""
         try:
             payload = json.loads(msg.payload.decode())
             logger.info(f"📩 Received message on {msg.topic}")
             
             if msg.topic.startswith("weather/sensors/"):
-                device_id = payload.get("device_id", "unknown")
-                device_name = payload.get("device_name", "")
-                location = payload.get("location", "")
-                
-                temperature = payload.get("temperature")
-                humidity = payload.get("humidity", 65.0)  # Default humidity
-                pressure = payload.get("pressure")
-                altitude = payload.get("altitude")
-                rainfall = payload.get("rainfall", 0)
-                is_raining = payload.get("is_raining", False)
-                light = payload.get("light")
-                rain_percentage = payload.get("rain_percentage", 0)
-                uptime = payload.get("uptime", 0)
-                
-                logger.info(f"📊 Weather from {device_id}: {temperature}°C, {pressure} hPa")
-                
-                # Prepare data for Supabase (include humidity)
+                # Extract data with humidity default
                 data = {
-                    'device_id': device_id,
-                    'device_name': device_name,
-                    'location': location,
-                    'temperature': temperature,
-                    'humidity': humidity,  # Added humidity
-                    'pressure': pressure,
-                    'altitude': altitude,
-                    'rainfall': rainfall,
-                    'is_raining': is_raining,
-                    'light': light,
-                    'rain_percentage': rain_percentage,
-                    'uptime': uptime,
+                    'device_id': payload.get('device_id', 'ESP32-001'),
+                    'device_name': payload.get('device_name', ''),
+                    'location': payload.get('location', ''),
+                    'temperature': payload.get('temperature'),
+                    'humidity': payload.get('humidity', 65.0),  # Default humidity
+                    'pressure': payload.get('pressure'),
+                    'altitude': payload.get('altitude'),
+                    'rainfall': payload.get('rainfall', 0),
+                    'is_raining': payload.get('is_raining', False),
+                    'light': payload.get('light'),
+                    'rain_percentage': payload.get('rain_percentage', 0),
+                    'uptime': payload.get('uptime', 0),
                     'created_at': datetime.now().isoformat()
                 }
                 
-                # Remove None values
+                # Remove None values but keep humidity (set default if None)
+                if data['humidity'] is None:
+                    data['humidity'] = 65.0
+                
+                # Remove other None values
                 data = {k: v for k, v in data.items() if v is not None}
                 
+                logger.info(f"📊 Weather from {data.get('device_id')}: {data.get('temperature')}°C, {data.get('humidity')}%")
+                
+                # AUTO-SAVE to Supabase
                 self._save_to_supabase(data)
             
             if msg.topic in self.callbacks:

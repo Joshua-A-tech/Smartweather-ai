@@ -20,7 +20,7 @@ function App() {
           <Container>
             <Navbar.Brand as={Link} to="/">
               <FaCloudSun className="me-2" />
-              SmartWeather AI
+              SmartWeather
             </Navbar.Brand>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
             <Navbar.Collapse id="basic-navbar-nav">
@@ -56,7 +56,7 @@ function App() {
         <footer className="bg-dark text-white text-center py-3 mt-5">
           <Container>
             <small>
-              SmartWeather AI © 2026 - AI-Enhanced IoT Weather Monitoring System
+              SmartWeather © 2026 - AI-Enhanced IoT Weather Monitoring System
             </small>
           </Container>
         </footer>

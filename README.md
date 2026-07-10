@@ -1,8 +1,8 @@
-# SmartWeather AI
+# SmartWeather
 
 ## Project Overview
 
-SmartWeather AI is an AI-enhanced IoT weather monitoring, forecasting, reporting, and advisory platform.
+SmartWeather is an AI-enhanced IoT weather monitoring, forecasting, reporting, and advisory platform.
 
 The system combines:
 

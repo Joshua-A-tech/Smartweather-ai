@@ -9,7 +9,7 @@ import os
 
 class Settings(BaseSettings):
     # Project
-    PROJECT_NAME: str = "SmartWeather AI"
+    PROJECT_NAME: str = "SmartWeather"
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
     

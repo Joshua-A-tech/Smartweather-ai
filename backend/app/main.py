@@ -1,5 +1,5 @@
 """
-SmartWeather AI - FastAPI Backend
+SmartWeather - FastAPI Backend
 """
 
 from fastapi import FastAPI
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="SmartWeather AI",
+    title="SmartWeather",
     version="0.1.0",
     description="AI-Enhanced IoT Weather Monitoring System",
     docs_url="/docs",
@@ -38,7 +38,7 @@ from app.services.mqtt_service import mqtt_service
 @app.on_event("startup")
 async def startup_event():
     """Start MQTT service on application startup"""
-    logger.info("🚀 Starting SmartWeather AI Backend...")
+    logger.info("🚀 Starting SmartWeather Backend...")
     try:
         mqtt_service.connect()
         logger.info("✅ MQTT service started successfully")
@@ -48,7 +48,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Stop MQTT service on application shutdown"""
-    logger.info("🛑 Shutting down SmartWeather AI Backend...")
+    logger.info("🛑 Shutting down SmartWeather Backend...")
     try:
         mqtt_service.disconnect()
         logger.info("✅ MQTT service stopped")
@@ -59,7 +59,7 @@ async def shutdown_event():
 async def root():
     return {
         "status": "healthy",
-        "project": "SmartWeather AI",
+        "project": "SmartWeather",
         "version": "0.1.0",
         "services": {
             "mqtt": "connected" if mqtt_service.is_connected else "disconnected"

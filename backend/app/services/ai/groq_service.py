@@ -113,7 +113,7 @@ Updated: {weather.get('created_at', 'unknown')}
             return self._fallback_response(question, weather)
         
         try:
-            system_prompt = f"""You are SmartWeather AI, a friendly and intelligent assistant.
+            system_prompt = f"""You are SmartWeather, a friendly and intelligent assistant.
 
 CURRENT WEATHER DATA:
 {weather_context}
@@ -162,6 +162,6 @@ If weather data exists, always include it when asked about weather."""
             
             return f"🌤️ Weather: {temp}°C, {humidity}% humidity, Wind: {wind} km/h"
         
-        return "🤖 SmartWeather AI - No weather data available."
+        return "🤖 SmartWeather - No weather data available."
 
 groq_service = GroqService()

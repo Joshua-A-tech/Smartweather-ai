@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Spinner, Alert, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaCompress, 
-  FaCloudRain, FaCloudSun, FaRobot,
-  FaSun, FaMoon, FaLightbulb
+  FaThermometerHalf, FaCompress, FaCloudRain, FaCloudSun, 
+  FaRobot, FaSun, FaMoon, FaDownload, FaPrint, FaShare
 } from 'react-icons/fa';
 import { Line } from 'react-chartjs-2';
 import {
@@ -14,8 +13,10 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { weatherAPI, healthAPI, aiAPI } from '../services/api';
 
 ChartJS.register(
@@ -25,7 +26,9 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler,
+  annotationPlugin
 );
 
 function Dashboard() {
@@ -116,9 +119,9 @@ function Dashboard() {
   const lightValue = weatherData.light !== undefined ? weatherData.light : 0;
   const isDark = lightValue < 500;
 
-  // Prepare chart data
+  // Advanced Chart with annotations
   const chartData = {
-    labels: forecastData.map(f => `+${f.hour}h`),
+    labels: forecastData.map(f => `${f.hour}h`),
     datasets: [
       {
         label: 'Temperature (°C)',
@@ -126,20 +129,54 @@ function Dashboard() {
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.2)',
         tension: 0.4,
+        fill: true,
+        pointBackgroundColor: 'rgba(255, 99, 132, 1)',
+      },
+      {
+        label: 'Rain Probability (%)',
+        data: forecastData.map(f => (f.rain_probability || 0) * 100),
+        borderColor: 'rgb(53, 162, 235)',
+        backgroundColor: 'rgba(53, 162, 235, 0.2)',
+        tension: 0.4,
+        fill: true,
+        borderDash: [5, 5],
+        yAxisID: 'y1',
       },
     ],
   };
 
   const chartOptions = {
     responsive: true,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         position: 'top',
       },
       title: {
         display: true,
-        text: '24-Hour Temperature Forecast',
+        text: '24-Hour Weather Forecast',
+        font: { size: 16, weight: 'bold' }
       },
+      annotation: {
+        annotations: {
+          line1: {
+            type: 'line',
+            yMin: 28,
+            yMax: 28,
+            borderColor: 'rgba(255, 99, 132, 0.5)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            label: {
+              content: 'Heat Alert',
+              enabled: true,
+              position: 'start'
+            }
+          }
+        }
+      }
     },
     scales: {
       y: {
@@ -147,6 +184,26 @@ function Dashboard() {
         title: {
           display: true,
           text: 'Temperature (°C)'
+        },
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
+        }
+      },
+      y1: {
+        position: 'right',
+        beginAtZero: true,
+        max: 100,
+        title: {
+          display: true,
+          text: 'Rain Probability (%)'
+        },
+        grid: {
+          drawOnChartArea: false,
+        },
+      },
+      x: {
+        grid: {
+          color: 'rgba(0, 0, 0, 0.1)'
         }
       }
     },
@@ -156,7 +213,6 @@ function Dashboard() {
     <div>
       <h1 className="mb-4">Dashboard</h1>
       
-      {/* Device Selector */}
       <Row className="mb-4">
         <Col md={4}>
           <Form>
@@ -179,7 +235,6 @@ function Dashboard() {
         </Col>
       </Row>
 
-      {/* Health Status */}
       <Alert variant={health?.status === 'operational' ? 'success' : 'warning'} className="mb-4">
         <strong>System Status:</strong> {health?.status || 'Unknown'} 
         {health?.services && (
@@ -189,7 +244,6 @@ function Dashboard() {
         )}
       </Alert>
 
-      {/* Weather Cards */}
       <Row className="mb-4">
         <Col md={3} sm={6} className="mb-3">
           <Card className="text-center h-100">
@@ -238,7 +292,6 @@ function Dashboard() {
         </Col>
       </Row>
 
-      {/* Charts */}
       <Row>
         <Col lg={8} className="mb-4">
           <Card>

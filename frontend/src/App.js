@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Container, Navbar, Nav } from 'react-bootstrap';
-import { FaCloudSun, FaChartLine, FaRobot, FaBell } from 'react-icons/fa';
+import { Container, Navbar, Nav, Button } from 'react-bootstrap';
+import { FaCloudSun, FaChartLine, FaRobot, FaBell, FaMoon, FaSun } from 'react-icons/fa';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
-// Import pages
 import Dashboard from './pages/Dashboard';
 import Weather from './pages/Weather';
 import AIChat from './pages/AIChat';
@@ -11,15 +11,16 @@ import Anomalies from './pages/Anomalies';
 
 import './App.css';
 
-function App() {
+function ThemedApp() {
+  const { darkMode, toggleTheme } = useTheme();
+
   return (
     <Router>
-      <div className="App">
-        {/* Navigation */}
-        <Navbar bg="dark" variant="dark" expand="lg" className="mb-4">
+      <div className={`App ${darkMode ? 'dark-mode' : 'light-mode'}`}>
+        <Navbar bg={darkMode ? 'dark' : 'light'} variant={darkMode ? 'dark' : 'light'} expand="lg" className="mb-4 shadow-sm">
           <Container>
             <Navbar.Brand as={Link} to="/">
-              <FaCloudSun className="me-2" />
+              <FaCloudSun className="me-2" style={{ color: darkMode ? '#ffd700' : '#f39c12' }} />
               SmartWeather
             </Navbar.Brand>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -37,12 +38,19 @@ function App() {
                 <Nav.Link as={Link} to="/anomalies">
                   <FaBell className="me-1" /> Alerts
                 </Nav.Link>
+                <Button
+                  variant={darkMode ? 'outline-light' : 'outline-dark'}
+                  size="sm"
+                  onClick={toggleTheme}
+                  className="ms-2"
+                >
+                  {darkMode ? <FaSun /> : <FaMoon />}
+                </Button>
               </Nav>
             </Navbar.Collapse>
           </Container>
         </Navbar>
 
-        {/* Main Content */}
         <Container fluid className="px-4">
           <Routes>
             <Route path="/" element={<Dashboard />} />
@@ -52,16 +60,21 @@ function App() {
           </Routes>
         </Container>
 
-        {/* Footer */}
-        <footer className="bg-dark text-white text-center py-3 mt-5">
+        <footer className={`text-center py-3 mt-5 ${darkMode ? 'bg-dark text-light' : 'bg-light text-dark'}`}>
           <Container>
-            <small>
-              SmartWeather © 2026 - AI-Enhanced IoT Weather Monitoring System
-            </small>
+            <small>SmartWeather © 2026 - AI-Enhanced IoT Weather Monitoring System</small>
           </Container>
         </footer>
       </div>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <ThemedApp />
+    </ThemeProvider>
   );
 }
 

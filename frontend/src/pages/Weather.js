@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Spinner, Alert, Button, Form } from 'react-bootstrap';
 import { 
-  FaThermometerHalf, FaCompress, 
-  FaCloudRain, FaClock, FaCloudSun,
-  FaSun, FaMoon, FaLightbulb
+  FaThermometerHalf, FaCompress, FaCloudRain, FaClock, 
+  FaCloudSun, FaSun, FaMoon, FaFileDownload, FaPrint
 } from 'react-icons/fa';
 import { weatherAPI } from '../services/api';
 
@@ -57,6 +56,90 @@ function Weather() {
     setSelectedDevice(e.target.value);
   };
 
+  // ============================================================
+  // DATA EXPORT FUNCTION
+  // ============================================================
+  const exportData = async () => {
+    try {
+      setLoading(true);
+      const response = await weatherAPI.getHistory(selectedDevice, 1000);
+      const data = response.data.data || [];
+      
+      if (data.length === 0) {
+        alert('📭 No data to export');
+        setLoading(false);
+        return;
+      }
+      
+      // Create CSV
+      const headers = [
+        'Device ID', 
+        'Temperature (°C)', 
+        'Humidity (%)', 
+        'Pressure (hPa)', 
+        'Rainfall (mm)', 
+        'Light', 
+        'Timestamp'
+      ];
+      
+      const rows = data.map(d => [
+        d.device_id || selectedDevice,
+        d.temperature || 'N/A',
+        d.humidity || 'N/A',
+        d.pressure || 'N/A',
+        d.rainfall || 0,
+        d.light || 'N/A',
+        new Date(d.created_at || Date.now()).toLocaleString()
+      ]);
+      
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      
+      // Download
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `weather_data_${selectedDevice}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      alert(`✅ Exported ${data.length} records successfully!`);
+      setLoading(false);
+      
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('❌ Failed to export data');
+      setLoading(false);
+    }
+  };
+
+  // ============================================================
+  // PRINT FUNCTION
+  // ============================================================
+  const printReport = () => {
+    window.print();
+  };
+
+  // ============================================================
+  // SHARE FUNCTION
+  // ============================================================
+  const shareDashboard = () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      navigator.share({
+        title: 'SmartWeather - Weather Report',
+        text: `Current weather from ${selectedDevice}: ${weather?.data?.temperature || 'N/A'}°C`,
+        url: url
+      }).catch(err => console.log('Share cancelled'));
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(url);
+      alert('📋 URL copied to clipboard! Share it with anyone.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-5">
@@ -85,7 +168,7 @@ function Weather() {
       <h1 className="mb-4">Weather Station</h1>
       
       <Row className="mb-4">
-        <Col md={6}>
+        <Col md={4}>
           <Form>
             <Form.Group>
               <Form.Label>Select Device</Form.Label>
@@ -99,10 +182,18 @@ function Weather() {
             </Form.Group>
           </Form>
         </Col>
-        <Col md={6} className="text-end">
+        <Col md={8} className="text-end d-flex justify-content-end gap-2 flex-wrap">
           <Button variant="primary" onClick={fetchWeather}>
-            <FaClock className="me-2" />
-            Refresh
+            <FaClock className="me-2" /> Refresh
+          </Button>
+          <Button variant="success" onClick={exportData}>
+            <FaFileDownload className="me-2" /> Export CSV
+          </Button>
+          <Button variant="info" onClick={printReport}>
+            <FaPrint className="me-2" /> Print
+          </Button>
+          <Button variant="secondary" onClick={shareDashboard}>
+            📤 Share
           </Button>
         </Col>
       </Row>
@@ -211,7 +302,7 @@ function Weather() {
                       <strong>Rain:</strong> {isRaining ? '🌧️ Raining' : '☀️ Dry'}
                     </li>
                     <li>
-                      <FaLightbulb className="me-2 text-warning" />
+                      <FaSun className="me-2 text-warning" />
                       <strong>Light:</strong> {lightValue} {isDark ? '(🌙 Dark)' : '(☀️ Light)'}
                     </li>
                   </ul>

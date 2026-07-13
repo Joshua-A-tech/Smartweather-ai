@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from . import weather, mqtt, ai, devices
+from . import weather, mqtt, ai, devices, voice
 
 api_router = APIRouter()
 
@@ -8,6 +8,7 @@ api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
 api_router.include_router(mqtt.router, prefix="/mqtt", tags=["mqtt"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(devices.router, prefix="/devices", tags=["devices"])
+api_router.include_router(voice.router, prefix="/voice", tags=["voice"])
 
 @api_router.get("/test")
 async def test():

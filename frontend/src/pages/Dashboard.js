@@ -341,3 +341,15 @@ function Dashboard() {
 }
 
 export default Dashboard;
+// Add this import at the top
+import VoiceAssistant from '../components/VoiceAssistant';
+
+// Add this section where you want the voice assistant to appear
+// After the weather cards, before the charts
+
+{/* Voice Assistant */}
+<Row className="mb-4">
+  <Col md={8} className="mx-auto">
+    <VoiceAssistant deviceId={selectedDevice} />
+  </Col>
+</Row>

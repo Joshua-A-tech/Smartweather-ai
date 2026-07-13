@@ -158,3 +158,23 @@ async def get_stats():
         "groq_available": groq_service.client is not None,
         "timestamp": datetime.now().isoformat()
     }
+
+# Add this import at the top
+from app.services.ai.predictive_alerts import predictive_alerts
+
+# Add this new endpoint
+@router.get("/predictions")
+async def get_predictions(
+    device_id: str = Query(..., description="Device ID")
+):
+    """Get AI-powered predictive alerts"""
+    try:
+        predictions = predictive_alerts.get_predictions(device_id)
+        return {
+            "status": "success",
+            "data": predictions,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

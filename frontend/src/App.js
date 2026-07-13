@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Container, Navbar, Nav, Button } from 'react-bootstrap';
-import { FaCloudSun, FaChartLine, FaRobot, FaBell, FaMoon, FaSun } from 'react-icons/fa';
+import { Container, Navbar, Nav, Button, Badge } from 'react-bootstrap';
+import { 
+  FaCloudSun, FaChartLine, FaRobot, FaBell, FaMoon, FaSun, FaBellSlash 
+} from 'react-icons/fa';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 import Dashboard from './pages/Dashboard';
@@ -9,10 +11,74 @@ import Weather from './pages/Weather';
 import AIChat from './pages/AIChat';
 import Anomalies from './pages/Anomalies';
 
+import { 
+  requestNotificationPermission, 
+  checkWeatherAlerts, 
+  sendWeatherAlert 
+} from './services/notificationService';
+
 import './App.css';
 
 function ThemedApp() {
   const { darkMode, toggleTheme } = useTheme();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
+  const [lastWeather, setLastWeather] = useState(null);
+
+  // Request notification permission on load
+  useEffect(() => {
+    const checkPermission = async () => {
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          setNotificationsEnabled(true);
+        }
+      }
+    };
+    checkPermission();
+  }, []);
+
+  // Check for weather alerts periodically
+  useEffect(() => {
+    const checkAlerts = async () => {
+      try {
+        const response = await fetch('/api/v1/weather/current?device_id=ESP32-001');
+        const data = await response.json();
+        
+        if (data && data.data) {
+          const alerts = checkWeatherAlerts(data.data, lastWeather);
+          
+          alerts.forEach(alert => {
+            setAlertCount(prev => prev + 1);
+            if (notificationsEnabled) {
+              sendWeatherAlert(alert);
+            }
+          });
+          
+          setLastWeather(data.data);
+        }
+      } catch (error) {
+        console.log('Alert check failed:', error);
+      }
+    };
+
+    // Check every 30 seconds
+    const interval = setInterval(checkAlerts, 30000);
+    return () => clearInterval(interval);
+  }, [lastWeather, notificationsEnabled]);
+
+  const enableNotifications = async () => {
+    const enabled = await requestNotificationPermission();
+    setNotificationsEnabled(enabled);
+    if (enabled) {
+      alert('✅ Notifications enabled! You will receive weather alerts.');
+    } else {
+      alert('❌ Please allow notifications in your browser settings.');
+    }
+  };
+
+  const clearAlerts = () => {
+    setAlertCount(0);
+  };
 
   return (
     <Router>
@@ -35,9 +101,29 @@ function ThemedApp() {
                 <Nav.Link as={Link} to="/ai-chat">
                   <FaRobot className="me-1" /> AI Chat
                 </Nav.Link>
-                <Nav.Link as={Link} to="/anomalies">
+                <Nav.Link as={Link} to="/anomalies" className="position-relative">
                   <FaBell className="me-1" /> Alerts
+                  {alertCount > 0 && (
+                    <Badge 
+                      bg="danger" 
+                      pill 
+                      className="position-absolute top-0 start-100 translate-middle"
+                      onClick={clearAlerts}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {alertCount}
+                    </Badge>
+                  )}
                 </Nav.Link>
+                <Button
+                  variant={notificationsEnabled ? 'success' : 'outline-secondary'}
+                  size="sm"
+                  onClick={enableNotifications}
+                  className="ms-2"
+                  title={notificationsEnabled ? 'Notifications Enabled' : 'Enable Notifications'}
+                >
+                  {notificationsEnabled ? <FaBell /> : <FaBellSlash />}
+                </Button>
                 <Button
                   variant={darkMode ? 'outline-light' : 'outline-dark'}
                   size="sm"

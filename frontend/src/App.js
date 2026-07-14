@@ -151,3 +151,10 @@ function App() {
 }
 
 export default App;
+// Add these imports at the top
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
+// Add these routes in the <Routes> section
+<Route path="/forgot-password" element={<ForgotPassword />} />
+<Route path="/reset-password" element={<ResetPassword />} />

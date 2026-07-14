@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Card, Form, Button, Alert, Container, Row, Col } from 'react-bootstrap';
 import { FaCloudSun, FaEnvelope, FaLock } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -82,6 +82,15 @@ function Login() {
                     minLength={6}
                   />
                 </Form.Group>
+
+                {/* Forgot Password Link */}
+                {!isSignUp && (
+                  <div className="text-end mb-3">
+                    <Link to="/forgot-password" className="text-decoration-none small">
+                      Forgot password?
+                    </Link>
+                  </div>
+                )}
 
                 <Button
                   variant="primary"

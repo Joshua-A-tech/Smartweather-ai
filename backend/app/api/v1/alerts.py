@@ -22,6 +22,7 @@ class AlertPreferences(BaseModel):
     temp_low: Optional[float] = None
     humidity_high: Optional[float] = None
     rain_alert: bool = False
+    user_id: Optional[str] = None  # Added user_id to the model
 
 @router.get("/preferences")
 async def get_preferences(
@@ -32,6 +33,7 @@ async def get_preferences(
     try:
         logger.info(f"Getting preferences for user {user_id}, device {device_id}")
         supabase = get_supabase_client()
+        
         response = supabase.table('alert_preferences')\
             .select('*')\
             .eq('user_id', user_id)\
@@ -56,16 +58,29 @@ async def create_or_update_preferences(
         
         supabase = get_supabase_client()
         
+        # Ensure user_id is set
+        if not prefs.user_id:
+            prefs.user_id = user_id
+        
+        # Prepare data
+        data = {
+            'user_id': user_id,
+            'device_id': prefs.device_id,
+            'device_name': prefs.device_name,
+            'device_location': prefs.device_location,
+            'temp_high': prefs.temp_high,
+            'temp_low': prefs.temp_low,
+            'humidity_high': prefs.humidity_high,
+            'rain_alert': prefs.rain_alert,
+            'updated_at': datetime.now().isoformat()
+        }
+        
         # Check if exists
         existing = supabase.table('alert_preferences')\
             .select('id')\
             .eq('user_id', user_id)\
             .eq('device_id', prefs.device_id)\
             .execute()
-        
-        data = prefs.dict()
-        data['user_id'] = user_id
-        data['updated_at'] = datetime.now().isoformat()
         
         if existing.data:
             # Update

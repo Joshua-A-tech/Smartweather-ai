@@ -14,6 +14,8 @@ import AIChat from './pages/AIChat';
 import Anomalies from './pages/Anomalies';
 import Analytics from './pages/Analytics';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import './App.css';
 
@@ -101,6 +103,8 @@ function ThemedApp() {
         <Container fluid className="px-4">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
@@ -151,10 +155,3 @@ function App() {
 }
 
 export default App;
-// Add these imports at the top
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-
-// Add these routes in the <Routes> section
-<Route path="/forgot-password" element={<ForgotPassword />} />
-<Route path="/reset-password" element={<ResetPassword />} />

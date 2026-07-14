@@ -16,3 +16,5 @@ scikit-learn
 torch
 sentence-transformers
 reportlab
+resend==0.8.0
+resend==0.8.0

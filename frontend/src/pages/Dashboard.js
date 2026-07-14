@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Spinner, Alert, Form } from 'react-bootstrap';
 import { 
   FaThermometerHalf, FaCompress, FaCloudRain, FaCloudSun, 
-  FaRobot, FaSun, FaMoon, FaDownload, FaPrint, FaShare
+  FaRobot, FaSun, FaMoon
 } from 'react-icons/fa';
 import { Line } from 'react-chartjs-2';
 import {
@@ -16,8 +16,8 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import annotationPlugin from 'chartjs-plugin-annotation';
 import { weatherAPI, healthAPI, aiAPI } from '../services/api';
+import VoiceAssistant from '../components/VoiceAssistant';
 
 ChartJS.register(
   CategoryScale,
@@ -27,8 +27,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler,
-  annotationPlugin
+  Filler
 );
 
 function Dashboard() {
@@ -119,7 +118,7 @@ function Dashboard() {
   const lightValue = weatherData.light !== undefined ? weatherData.light : 0;
   const isDark = lightValue < 500;
 
-  // Advanced Chart with annotations
+  // Chart data
   const chartData = {
     labels: forecastData.map(f => `${f.hour}h`),
     datasets: [
@@ -159,23 +158,6 @@ function Dashboard() {
         display: true,
         text: '24-Hour Weather Forecast',
         font: { size: 16, weight: 'bold' }
-      },
-      annotation: {
-        annotations: {
-          line1: {
-            type: 'line',
-            yMin: 28,
-            yMax: 28,
-            borderColor: 'rgba(255, 99, 132, 0.5)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            label: {
-              content: 'Heat Alert',
-              enabled: true,
-              position: 'start'
-            }
-          }
-        }
       }
     },
     scales: {
@@ -292,6 +274,13 @@ function Dashboard() {
         </Col>
       </Row>
 
+      {/* Voice Assistant */}
+      <Row className="mb-4">
+        <Col md={8} className="mx-auto">
+          <VoiceAssistant deviceId={selectedDevice} />
+        </Col>
+      </Row>
+
       <Row>
         <Col lg={8} className="mb-4">
           <Card>
@@ -341,15 +330,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-// Add this import at the top
-import VoiceAssistant from '../components/VoiceAssistant';
-
-// Add this section where you want the voice assistant to appear
-// After the weather cards, before the charts
-
-{/* Voice Assistant */}
-<Row className="mb-4">
-  <Col md={8} className="mx-auto">
-    <VoiceAssistant deviceId={selectedDevice} />
-  </Col>
-</Row>

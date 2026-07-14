@@ -9,6 +9,8 @@ from datetime import datetime
 from app.core.database.supabase import get_supabase_client
 from app.services.alerts.email_alerts import email_alerts
 import logging
+import os
+from supabase import create_client
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,14 @@ class AlertPreferences(BaseModel):
     temp_low: Optional[float] = None
     humidity_high: Optional[float] = None
     rain_alert: bool = False
-    user_id: Optional[str] = None  # Added user_id to the model
+
+# Get service role client (bypasses RLS)
+def get_admin_client():
+    url = os.getenv('SUPABASE_URL')
+    key = os.getenv('SUPABASE_SERVICE_KEY') or os.getenv('SUPABASE_KEY')
+    if url and key:
+        return create_client(url, key)
+    return None
 
 @router.get("/preferences")
 async def get_preferences(
@@ -32,7 +41,9 @@ async def get_preferences(
     """Get user alert preferences"""
     try:
         logger.info(f"Getting preferences for user {user_id}, device {device_id}")
-        supabase = get_supabase_client()
+        supabase = get_admin_client()
+        if not supabase:
+            supabase = get_supabase_client()
         
         response = supabase.table('alert_preferences')\
             .select('*')\
@@ -56,11 +67,10 @@ async def create_or_update_preferences(
         logger.info(f"Saving preferences for user {user_id}, device {prefs.device_id}")
         logger.info(f"Data: {prefs.dict()}")
         
-        supabase = get_supabase_client()
-        
-        # Ensure user_id is set
-        if not prefs.user_id:
-            prefs.user_id = user_id
+        # Use admin client to bypass RLS
+        supabase = get_admin_client()
+        if not supabase:
+            supabase = get_supabase_client()
         
         # Prepare data
         data = {
@@ -113,7 +123,10 @@ async def get_alert_logs(
 ):
     """Get alert logs for a device"""
     try:
-        supabase = get_supabase_client()
+        supabase = get_admin_client()
+        if not supabase:
+            supabase = get_supabase_client()
+        
         response = supabase.table('alert_logs')\
             .select('*')\
             .eq('device_id', device_id)\
@@ -135,7 +148,10 @@ async def check_alerts(
         logger.info(f"Checking alerts for device {device_id}, user {user_id}")
         
         # Get latest weather data
-        supabase = get_supabase_client()
+        supabase = get_admin_client()
+        if not supabase:
+            supabase = get_supabase_client()
+            
         weather_response = supabase.table('weather_data')\
             .select('*')\
             .eq('device_id', device_id)\

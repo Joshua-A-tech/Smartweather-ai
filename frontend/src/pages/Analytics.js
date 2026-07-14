@@ -5,7 +5,7 @@ import {
 import { 
   FaChartLine, FaCalendarAlt, FaDownload, FaThermometerHalf, 
   FaTint, FaCompress, FaCloudRain, FaSun, FaMoon,
-  FaExclamationTriangle, FaClock, FaCloudSun
+  FaExclamationTriangle, FaClock, FaCloudSun, FaFilePdf
 } from 'react-icons/fa';
 import { Line, Bar } from 'react-chartjs-2';
 import {
@@ -20,8 +20,8 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { weatherAPI } from '../services/api';
 import { format } from 'date-fns';
+import { weatherAPI } from '../services/api';
 
 ChartJS.register(
   CategoryScale,
@@ -166,6 +166,36 @@ function Analytics() {
       danger: 'danger'
     };
     return variants[severity] || 'secondary';
+  };
+
+  const generatePDF = async () => {
+    try {
+      setLoading(true);
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const response = await fetch(
+        `${API_URL}/api/v1/pdf/report?device_id=${selectedDevice}&days=${dateRange}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `weather_report_${selectedDevice}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('Failed to generate PDF report');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -333,12 +363,15 @@ function Analytics() {
             </Form.Group>
           </Form>
         </Col>
-        <Col md={5} className="text-end d-flex align-items-end">
-          <Button variant="primary" onClick={fetchAnalytics} className="me-2">
+        <Col md={5} className="text-end d-flex align-items-end justify-content-end gap-2">
+          <Button variant="primary" onClick={fetchAnalytics}>
             <FaCalendarAlt className="me-2" /> Update
           </Button>
-          <Button variant="success">
-            <FaDownload className="me-2" /> Export Report
+          <Button variant="success" onClick={generatePDF}>
+            <FaFilePdf className="me-2" /> PDF Report
+          </Button>
+          <Button variant="info">
+            <FaDownload className="me-2" /> Export CSV
           </Button>
         </Col>
       </Row>
@@ -475,42 +508,3 @@ function Analytics() {
 }
 
 export default Analytics;
-// Add this import at the top
-import { FaFilePdf } from 'react-icons/fa';
-
-// Add this function inside the Analytics component
-const generatePDF = async () => {
-  try {
-    setLoading(true);
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-    const response = await fetch(
-      `${API_URL}/api/v1/pdf/report?device_id=${selectedDevice}&days=${dateRange}`
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to generate PDF');
-    }
-    
-    // Download PDF
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `weather_report_${selectedDevice}_${new Date().toISOString().split('T')[0]}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-  } catch (err) {
-    console.error('PDF generation error:', err);
-    alert('Failed to generate PDF report');
-  } finally {
-    setLoading(false);
-  }
-};
-
-// Add this button next to Export CSV
-<Button variant="danger" onClick={generatePDF} disabled={loading}>
-  <FaFilePdf className="me-2" /> PDF Report
-</Button>

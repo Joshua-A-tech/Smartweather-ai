@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card, Form, Button, Row, Col, Spinner, Alert, Table, Badge, ToggleButton, ToggleButtonGroup
+  Card, Form, Button, Row, Col, Spinner, Alert, Table, Badge
 } from 'react-bootstrap';
 import {
   FaBell, FaSave, FaHistory, FaExclamationTriangle, FaCheckCircle,
-  FaThermometerHalf, FaTint, FaCloudRain, FaCog
+  FaThermometerHalf, FaTint, FaCloudRain, FaCog, FaSync
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { weatherAPI } from '../services/api';
@@ -41,27 +41,35 @@ function AlertSettings() {
 
   const fetchDevices = async () => {
     try {
+      setLoading(true);
       const response = await weatherAPI.getDevices();
-      if (response.data && response.data.devices) {
+      console.log('Devices response:', response.data);
+      if (response.data && response.data.devices && response.data.devices.length > 0) {
         setDevices(response.data.devices);
-        if (response.data.devices.length > 0) {
-          setSelectedDevice(response.data.devices[0].device_id);
-        }
+        setSelectedDevice(response.data.devices[0].device_id);
+      } else {
+        // Fallback: use default device
+        setDevices([{ device_id: 'ESP32-001', name: 'Garden Sensor' }]);
+        setSelectedDevice('ESP32-001');
       }
     } catch (err) {
       console.error('Error fetching devices:', err);
+      setDevices([{ device_id: 'ESP32-001', name: 'Garden Sensor' }]);
+      setSelectedDevice('ESP32-001');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchPreferences = async () => {
-    if (!user) return;
+    if (!user || !selectedDevice) return;
     try {
+      console.log('Fetching preferences for user:', user.id, 'device:', selectedDevice);
       const response = await fetch(
         `${API_URL}/api/v1/alerts/preferences?user_id=${user.id}&device_id=${selectedDevice}`
       );
       const data = await response.json();
+      console.log('Preferences response:', data);
       if (data.data && data.data.length > 0) {
         setPreferences(data.data[0]);
       }
@@ -71,6 +79,7 @@ function AlertSettings() {
   };
 
   const fetchLogs = async () => {
+    if (!selectedDevice) return;
     try {
       const response = await fetch(
         `${API_URL}/api/v1/alerts/logs?device_id=${selectedDevice}&limit=20`
@@ -85,12 +94,24 @@ function AlertSettings() {
   };
 
   const handleSavePreferences = async () => {
-    if (!user) return;
+    if (!user) {
+      setError('Please log in to save preferences');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccess(null);
 
     try {
+      const payload = {
+        ...preferences,
+        device_id: selectedDevice,
+      };
+
+      console.log('Saving preferences:', payload);
+      console.log('User ID:', user.id);
+
       const response = await fetch(
         `${API_URL}/api/v1/alerts/preferences?user_id=${user.id}`,
         {
@@ -98,28 +119,33 @@ function AlertSettings() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            ...preferences,
-            device_id: selectedDevice,
-          }),
+          body: JSON.stringify(payload),
         }
       );
+
       const data = await response.json();
-      if (data.status === 'success') {
+      console.log('Save response:', data);
+
+      if (response.ok && data.status === 'success') {
         setSuccess('✅ Alert preferences saved successfully!');
+        fetchPreferences(); // Refresh preferences
       } else {
-        setError('Failed to save preferences');
+        setError(data.detail || data.message || 'Failed to save preferences');
       }
     } catch (err) {
-      setError('Error saving preferences');
-      console.error(err);
+      console.error('Error saving preferences:', err);
+      setError('Error saving preferences: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleCheckAlerts = async () => {
-    if (!user) return;
+    if (!user) {
+      setError('Please log in to check alerts');
+      return;
+    }
+
     setChecking(true);
     setError(null);
     setSuccess(null);
@@ -130,7 +156,9 @@ function AlertSettings() {
         { method: 'POST' }
       );
       const data = await response.json();
-      if (data.status === 'success') {
+      console.log('Check alerts response:', data);
+
+      if (response.ok && data.status === 'success') {
         if (data.alerts_sent > 0) {
           setSuccess(`✅ ${data.alerts_sent} alert(s) sent!`);
           fetchLogs();
@@ -138,35 +166,17 @@ function AlertSettings() {
           setSuccess('✅ No alerts triggered. Everything is normal!');
         }
       } else {
-        setError('Failed to check alerts');
+        setError(data.detail || data.message || 'Failed to check alerts');
       }
     } catch (err) {
-      setError('Error checking alerts');
-      console.error(err);
+      console.error('Error checking alerts:', err);
+      setError('Error checking alerts: ' + err.message);
     } finally {
       setChecking(false);
     }
   };
 
-  const getSeverityBadge = (severity) => {
-    const variants = {
-      warning: 'warning',
-      info: 'info',
-      danger: 'danger',
-      success: 'success'
-    };
-    return <Badge bg={variants[severity] || 'secondary'}>{severity || 'info'}</Badge>;
-  };
-
-  const getAlertIcon = (type) => {
-    const icons = {
-      heatwave: <FaThermometerHalf className="text-danger" />,
-      frost: <FaThermometerHalf className="text-info" />,
-      rain: <FaCloudRain className="text-primary" />,
-      humidity: <FaTint className="text-info" />
-    };
-    return icons[type] || <FaExclamationTriangle />;
-  };
+  // ... (rest of the component with getSeverityBadge, getAlertIcon, etc.)
 
   if (loading) {
     return (
@@ -183,6 +193,12 @@ function AlertSettings() {
         <FaBell className="me-2" /> Alert Settings
       </h1>
 
+      {!user && (
+        <Alert variant="warning">
+          Please log in to configure alert preferences.
+        </Alert>
+      )}
+
       <Row>
         <Col lg={4}>
           <Card className="mb-4">
@@ -197,13 +213,23 @@ function AlertSettings() {
                   <Form.Select
                     value={selectedDevice}
                     onChange={(e) => setSelectedDevice(e.target.value)}
+                    disabled={!user}
                   >
-                    {devices.map((device) => (
-                      <option key={device.device_id} value={device.device_id}>
-                        {device.name || device.device_id} {device.location ? `(${device.location})` : ''}
-                      </option>
-                    ))}
+                    {devices.length === 0 ? (
+                      <option value="">No devices found</option>
+                    ) : (
+                      devices.map((device) => (
+                        <option key={device.device_id} value={device.device_id}>
+                          {device.name || device.device_id} {device.location ? `(${device.location})` : ''}
+                        </option>
+                      ))
+                    )}
                   </Form.Select>
+                  {devices.length === 0 && (
+                    <Form.Text className="text-warning">
+                      No devices found. Make sure your ESP32 is connected.
+                    </Form.Text>
+                  )}
                 </Form.Group>
 
                 <hr />
@@ -220,6 +246,7 @@ function AlertSettings() {
                       setPreferences({ ...preferences, temp_high: parseFloat(e.target.value) })
                     }
                     placeholder="e.g., 35"
+                    disabled={!user}
                   />
                   <Form.Text className="text-muted">
                     Alert when temperature exceeds this value
@@ -238,6 +265,7 @@ function AlertSettings() {
                       setPreferences({ ...preferences, temp_low: parseFloat(e.target.value) })
                     }
                     placeholder="e.g., 0"
+                    disabled={!user}
                   />
                   <Form.Text className="text-muted">
                     Alert when temperature drops below this value
@@ -256,6 +284,7 @@ function AlertSettings() {
                       setPreferences({ ...preferences, humidity_high: parseFloat(e.target.value) })
                     }
                     placeholder="e.g., 80"
+                    disabled={!user}
                   />
                   <Form.Text className="text-muted">
                     Alert when humidity exceeds this value
@@ -270,6 +299,7 @@ function AlertSettings() {
                     onChange={(e) =>
                       setPreferences({ ...preferences, rain_alert: e.target.checked })
                     }
+                    disabled={!user}
                   />
                   <Form.Text className="text-muted">
                     Get alerts when rain is detected
@@ -283,7 +313,7 @@ function AlertSettings() {
                   <Button
                     variant="primary"
                     onClick={handleSavePreferences}
-                    disabled={saving}
+                    disabled={saving || !user}
                   >
                     <FaSave className="me-2" />
                     {saving ? 'Saving...' : 'Save Preferences'}
@@ -291,7 +321,7 @@ function AlertSettings() {
                   <Button
                     variant="success"
                     onClick={handleCheckAlerts}
-                    disabled={checking}
+                    disabled={checking || !user}
                   >
                     <FaBell className="me-2" />
                     {checking ? 'Checking...' : 'Check Alerts Now'}
@@ -347,5 +377,26 @@ function AlertSettings() {
     </div>
   );
 }
+
+// Helper functions
+const getSeverityBadge = (severity) => {
+  const variants = {
+    warning: 'warning',
+    info: 'info',
+    danger: 'danger',
+    success: 'success'
+  };
+  return <Badge bg={variants[severity] || 'secondary'}>{severity || 'info'}</Badge>;
+};
+
+const getAlertIcon = (type) => {
+  const icons = {
+    heatwave: <FaThermometerHalf className="text-danger" />,
+    frost: <FaThermometerHalf className="text-info" />,
+    rain: <FaCloudRain className="text-primary" />,
+    humidity: <FaTint className="text-info" />
+  };
+  return icons[type] || <FaExclamationTriangle />;
+};
 
 export default AlertSettings;

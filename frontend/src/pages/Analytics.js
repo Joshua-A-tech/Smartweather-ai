@@ -5,7 +5,7 @@ import {
 import { 
   FaChartLine, FaCalendarAlt, FaDownload, FaThermometerHalf, 
   FaTint, FaCompress, FaCloudRain, FaSun, FaMoon,
-  FaExclamationTriangle, FaClock
+  FaExclamationTriangle, FaClock, FaCloudSun
 } from 'react-icons/fa';
 import { Line, Bar } from 'react-chartjs-2';
 import {
@@ -21,7 +21,7 @@ import {
   Filler
 } from 'chart.js';
 import { weatherAPI } from '../services/api';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -75,12 +75,10 @@ function Analytics() {
       setLoading(true);
       setError(null);
       
-      // Fetch historical data
       const response = await weatherAPI.getHistory(selectedDevice, dateRange * 24);
       const data = response.data.data || [];
       setHistory(data);
       
-      // Calculate statistics
       if (data.length > 0) {
         const stats = calculateStats(data);
         setStats(stats);
@@ -116,7 +114,6 @@ function Analytics() {
   const detectEvents = (data) => {
     const events = [];
     
-    // Detect heatwave (temp > 35°C)
     const heatwave = data.filter(d => d.temperature > 35);
     if (heatwave.length > 0) {
       events.push({
@@ -128,7 +125,6 @@ function Analytics() {
       });
     }
     
-    // Detect frost (temp < 0°C)
     const frost = data.filter(d => d.temperature < 0);
     if (frost.length > 0) {
       events.push({
@@ -140,7 +136,6 @@ function Analytics() {
       });
     }
     
-    // Detect rain events
     const rainEvents = data.filter(d => d.is_raining || d.rainfall > 2);
     if (rainEvents.length > 0) {
       events.push({
@@ -191,7 +186,6 @@ function Analytics() {
     );
   }
 
-  // Prepare chart data
   const labels = history.map(d => format(new Date(d.created_at), 'MMM dd HH:mm'));
   const tempData = history.map(d => d.temperature);
   const humidityData = history.map(d => d.humidity);
@@ -349,7 +343,6 @@ function Analytics() {
         </Col>
       </Row>
 
-      {/* Statistics Cards */}
       {stats && (
         <Row className="mb-4">
           <Col md={3} className="mb-3">
@@ -391,7 +384,6 @@ function Analytics() {
         </Row>
       )}
 
-      {/* Charts */}
       <Row className="mb-4">
         <Col lg={8} className="mb-4">
           <Card>
@@ -409,7 +401,6 @@ function Analytics() {
         </Col>
       </Row>
 
-      {/* Events */}
       <Card className="mb-4">
         <Card.Body>
           <h5 className="mb-3">
@@ -459,7 +450,6 @@ function Analytics() {
         </Card.Body>
       </Card>
 
-      {/* Summary */}
       <Card>
         <Card.Body>
           <h5 className="mb-3">

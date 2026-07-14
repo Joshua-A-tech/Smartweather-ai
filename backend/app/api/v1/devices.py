@@ -36,7 +36,7 @@ def get_supabase_data(table: str, filters: dict = None):
         print(f"Error fetching data: {e}")
         return []
 
-@router.get("/devices")
+@router.get("")
 async def get_devices():
     """Get all registered devices"""
     devices = get_supabase_data('devices')
@@ -56,7 +56,7 @@ async def get_devices():
         "count": len(devices)
     }
 
-@router.get("/devices/{device_id}/weather")
+@router.get("/{device_id}/weather")
 async def get_device_weather(
     device_id: str,
     limit: int = 100

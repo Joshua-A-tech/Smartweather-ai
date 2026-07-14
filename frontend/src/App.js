@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Container, Navbar, Nav, Button, Badge } from 'react-bootstrap';
 import { 
-  FaCloudSun, FaChartLine, FaRobot, FaBell, FaMoon, FaSun, FaBellSlash 
+  FaCloudSun, FaChartLine, FaRobot, FaBell, FaMoon, FaSun, 
+  FaBellSlash, FaChartBar
 } from 'react-icons/fa';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
@@ -10,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Weather from './pages/Weather';
 import AIChat from './pages/AIChat';
 import Anomalies from './pages/Anomalies';
+import Analytics from './pages/Analytics';
 
 import { 
   requestNotificationPermission, 
@@ -25,7 +27,6 @@ function ThemedApp() {
   const [alertCount, setAlertCount] = useState(0);
   const [lastWeather, setLastWeather] = useState(null);
 
-  // Request notification permission on load
   useEffect(() => {
     const checkPermission = async () => {
       if ('Notification' in window) {
@@ -37,7 +38,6 @@ function ThemedApp() {
     checkPermission();
   }, []);
 
-  // Check for weather alerts periodically
   useEffect(() => {
     const checkAlerts = async () => {
       try {
@@ -61,7 +61,6 @@ function ThemedApp() {
       }
     };
 
-    // Check every 30 seconds
     const interval = setInterval(checkAlerts, 30000);
     return () => clearInterval(interval);
   }, [lastWeather, notificationsEnabled]);
@@ -97,6 +96,9 @@ function ThemedApp() {
                 </Nav.Link>
                 <Nav.Link as={Link} to="/weather">
                   <FaCloudSun className="me-1" /> Weather
+                </Nav.Link>
+                <Nav.Link as={Link} to="/analytics">
+                  <FaChartBar className="me-1" /> Analytics
                 </Nav.Link>
                 <Nav.Link as={Link} to="/ai-chat">
                   <FaRobot className="me-1" /> AI Chat
@@ -141,6 +143,7 @@ function ThemedApp() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/weather" element={<Weather />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/ai-chat" element={<AIChat />} />
             <Route path="/anomalies" element={<Anomalies />} />
           </Routes>

@@ -20,7 +20,6 @@ class EmailAlertService:
         self.from_email = os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
         self.supabase = get_supabase_client()
         
-        # Initialize Resend if API key exists
         if self.api_key:
             resend.api_key = self.api_key
             logger.info("✅ Resend email service initialized")
@@ -30,7 +29,6 @@ class EmailAlertService:
     def get_user_email(self, user_id: str) -> Optional[str]:
         """Get user email from Supabase"""
         try:
-            # Get user by ID from Supabase Auth
             response = self.supabase.auth.admin.get_user_by_id(user_id)
             return response.user.email if response.user else None
         except Exception as e:
@@ -60,49 +58,71 @@ class EmailAlertService:
         if not weather_data or not preferences:
             return alerts
         
-        temp = weather_data.get('temperature', 0)
-        humidity = weather_data.get('humidity', 0)
+        # Ensure numeric values
+        temp = float(weather_data.get('temperature', 0))
+        humidity = float(weather_data.get('humidity', 0))
         is_raining = weather_data.get('is_raining', False)
-        rainfall = weather_data.get('rainfall', 0)
+        rainfall = float(weather_data.get('rainfall', 0))
+        
+        # Get thresholds with defaults
+        temp_high = preferences.get('temp_high')
+        temp_low = preferences.get('temp_low')
+        humidity_high = preferences.get('humidity_high')
+        rain_alert = preferences.get('rain_alert', False)
+        
+        # Convert to float if not None
+        if temp_high is not None:
+            temp_high = float(temp_high)
+        if temp_low is not None:
+            temp_low = float(temp_low)
+        if humidity_high is not None:
+            humidity_high = float(humidity_high)
+        
+        # Debug logging
+        logger.info(f"📊 Checking alerts: temp={temp}, temp_high={temp_high}, temp_low={temp_low}")
         
         # High Temperature Alert
-        if preferences.get('temp_high') and temp > preferences['temp_high']:
+        if temp_high is not None and temp > temp_high:
+            logger.info(f"🔥 HIGH TEMP ALERT: {temp}°C > {temp_high}°C")
             alerts.append({
                 'type': 'heatwave',
                 'severity': 'warning',
                 'title': '🔥 High Temperature Alert',
-                'message': f'Temperature has reached {temp}°C, exceeding your threshold of {preferences["temp_high"]}°C',
-                'data': {'temperature': temp, 'threshold': preferences['temp_high']}
+                'message': f'Temperature has reached {temp:.1f}°C, exceeding your threshold of {temp_high:.1f}°C',
+                'data': {'temperature': temp, 'threshold': temp_high}
             })
         
         # Low Temperature Alert
-        if preferences.get('temp_low') and temp < preferences['temp_low']:
+        if temp_low is not None and temp < temp_low:
+            logger.info(f"❄️ LOW TEMP ALERT: {temp}°C < {temp_low}°C")
             alerts.append({
                 'type': 'frost',
                 'severity': 'warning',
                 'title': '❄️ Low Temperature Alert',
-                'message': f'Temperature has dropped to {temp}°C, below your threshold of {preferences["temp_low"]}°C',
-                'data': {'temperature': temp, 'threshold': preferences['temp_low']}
+                'message': f'Temperature has dropped to {temp:.1f}°C, below your threshold of {temp_low:.1f}°C',
+                'data': {'temperature': temp, 'threshold': temp_low}
             })
         
         # Rain Alert
-        if preferences.get('rain_alert') and is_raining:
+        if rain_alert and is_raining:
+            logger.info(f"☔ RAIN ALERT: Rain detected with {rainfall}mm")
             alerts.append({
                 'type': 'rain',
                 'severity': 'info',
                 'title': '☔ Rain Detected',
-                'message': f'Rain has been detected with {rainfall}mm of rainfall',
+                'message': f'Rain has been detected with {rainfall:.1f}mm of rainfall',
                 'data': {'rainfall': rainfall}
             })
         
         # High Humidity Alert
-        if preferences.get('humidity_high') and humidity > preferences['humidity_high']:
+        if humidity_high is not None and humidity > humidity_high:
+            logger.info(f"💧 HIGH HUMIDITY ALERT: {humidity}% > {humidity_high}%")
             alerts.append({
                 'type': 'humidity',
                 'severity': 'info',
                 'title': '💧 High Humidity Alert',
-                'message': f'Humidity has reached {humidity}%, exceeding your threshold of {preferences["humidity_high"]}%',
-                'data': {'humidity': humidity, 'threshold': preferences['humidity_high']}
+                'message': f'Humidity has reached {humidity:.1f}%, exceeding your threshold of {humidity_high:.1f}%',
+                'data': {'humidity': humidity, 'threshold': humidity_high}
             })
         
         return alerts
@@ -117,12 +137,10 @@ class EmailAlertService:
             device_name = device_info.get('name', 'Unknown Device')
             device_location = device_info.get('location', 'Unknown Location')
             
-            # Build email subject and body
             subject = f"🌤️ SmartWeather Alert: {alert['title']}"
             
             html_content = self._build_email_html(alert, device_name, device_location)
             
-            # Send via Resend
             response = resend.Emails.send({
                 "from": self.from_email,
                 "to": [recipient_email],
@@ -197,7 +215,6 @@ class EmailAlertService:
         """
     
     def _get_action_items(self, alert_type: str) -> str:
-        """Get action items based on alert type"""
         actions = {
             'heatwave': '<li>Stay hydrated and avoid direct sunlight</li><li>Check on vulnerable family members</li><li>Protect plants and pets from heat</li>',
             'frost': '<li>Bring plants indoors if possible</li><li>Protect outdoor pipes from freezing</li><li>Cover sensitive plants</li>',
@@ -218,6 +235,7 @@ class EmailAlertService:
             # Check for alerts
             alerts = self.check_alerts(weather_data, preferences)
             if not alerts:
+                logger.info("✅ No alerts triggered. Everything is normal!")
                 return 0
             
             # Get user email
@@ -237,9 +255,9 @@ class EmailAlertService:
             for alert in alerts:
                 if self.send_alert_email(email, alert, device_info):
                     sent_count += 1
-                    # Log alert in database
                     self._log_alert(device_id, alert, email)
             
+            logger.info(f"✅ {sent_count} alert(s) sent")
             return sent_count
             
         except Exception as e:

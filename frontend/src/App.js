@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-ro
 import { Container, Navbar, Nav, Button, Badge } from 'react-bootstrap';
 import { 
   FaCloudSun, FaChartLine, FaRobot, FaBell, FaMoon, FaSun, 
-  FaBellSlash, FaChartBar, FaUser
+  FaBellSlash, FaChartBar, FaUser, FaCog
 } from 'react-icons/fa';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -16,6 +16,7 @@ import Analytics from './pages/Analytics';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import AlertSettings from './pages/AlertSettings';
 
 import './App.css';
 
@@ -72,7 +73,7 @@ function ThemedApp() {
                     <Nav.Link as={Link} to="/ai-chat">
                       <FaRobot className="me-1" /> AI Chat
                     </Nav.Link>
-                    <Nav.Link as={Link} to="/anomalies">
+                    <Nav.Link as={Link} to="/alerts">
                       <FaBell className="me-1" /> Alerts
                     </Nav.Link>
                     <Nav.Link as={Link} to="/profile">
@@ -128,6 +129,11 @@ function ThemedApp() {
             <Route path="/anomalies" element={
               <ProtectedRoute>
                 <Anomalies />
+              </ProtectedRoute>
+            } />
+            <Route path="/alerts" element={
+              <ProtectedRoute>
+                <AlertSettings />
               </ProtectedRoute>
             } />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

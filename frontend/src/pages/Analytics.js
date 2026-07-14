@@ -475,3 +475,42 @@ function Analytics() {
 }
 
 export default Analytics;
+// Add this import at the top
+import { FaFilePdf } from 'react-icons/fa';
+
+// Add this function inside the Analytics component
+const generatePDF = async () => {
+  try {
+    setLoading(true);
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    const response = await fetch(
+      `${API_URL}/api/v1/pdf/report?device_id=${selectedDevice}&days=${dateRange}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to generate PDF');
+    }
+    
+    // Download PDF
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `weather_report_${selectedDevice}_${new Date().toISOString().split('T')[0]}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+  } catch (err) {
+    console.error('PDF generation error:', err);
+    alert('Failed to generate PDF report');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Add this button next to Export CSV
+<Button variant="danger" onClick={generatePDF} disabled={loading}>
+  <FaFilePdf className="me-2" /> PDF Report
+</Button>

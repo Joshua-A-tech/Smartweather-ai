@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Card, Form, Button, Alert, Container, Row, Col } from 'react-bootstrap';
-import { FaCloudSun, FaEnvelope, FaLock } from 'react-icons/fa';
+import { Card, Form, Button, Alert, Container, Row, Col, Divider } from 'react-bootstrap';
+import { FaCloudSun, FaEnvelope, FaLock, FaGoogle } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { signInWithGoogle } from '../services/supabaseClient';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ function Login() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   
   const { signUp, signIn } = useAuth();
   const navigate = useNavigate();
@@ -36,6 +38,19 @@ function Login() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    setError('');
+    try {
+      const { error } = await signInWithGoogle();
+      if (error) throw error;
+      // Redirect will happen automatically via Supabase OAuth flow
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed');
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '80vh' }}>
       <Row>
@@ -52,6 +67,21 @@ function Login() {
 
               {error && <Alert variant="danger">{error}</Alert>}
               {success && <Alert variant="success">{success}</Alert>}
+
+              {/* Google Sign In Button */}
+              <Button
+                variant="outline-dark"
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading}
+                className="w-100 mb-3 d-flex align-items-center justify-content-center"
+              >
+                <FaGoogle className="me-2" />
+                {googleLoading ? 'Connecting...' : (isSignUp ? 'Sign up with Google' : 'Sign in with Google')}
+              </Button>
+
+              <div className="text-center text-muted mb-3">
+                <small>OR</small>
+              </div>
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -83,7 +113,6 @@ function Login() {
                   />
                 </Form.Group>
 
-                {/* Forgot Password Link */}
                 {!isSignUp && (
                   <div className="text-end mb-3">
                     <Link to="/forgot-password" className="text-decoration-none small">

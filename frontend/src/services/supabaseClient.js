@@ -5,6 +5,21 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'eyJhbGciOiJI
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Google Sign In
+export const signInWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/dashboard`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+  return { data, error };
+};
+
 // Password reset function
 export const resetPassword = async (email) => {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {

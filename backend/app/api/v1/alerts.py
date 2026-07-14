@@ -20,12 +20,11 @@ class AlertPreferences(BaseModel):
     device_id: str
     device_name: Optional[str] = None
     device_location: Optional[str] = None
-    temp_high: Optional[float] = None
-    temp_low: Optional[float] = None
-    humidity_high: Optional[float] = None
+    temp_high: Optional[float] = None  # Changed to float
+    temp_low: Optional[float] = None   # Changed to float
+    humidity_high: Optional[float] = None  # Changed to float
     rain_alert: bool = False
 
-# Get service role client (bypasses RLS)
 def get_admin_client():
     url = os.getenv('SUPABASE_URL')
     key = os.getenv('SUPABASE_SERVICE_KEY') or os.getenv('SUPABASE_KEY')
@@ -67,12 +66,11 @@ async def create_or_update_preferences(
         logger.info(f"Saving preferences for user {user_id}, device {prefs.device_id}")
         logger.info(f"Data: {prefs.dict()}")
         
-        # Use admin client to bypass RLS
         supabase = get_admin_client()
         if not supabase:
             supabase = get_supabase_client()
         
-        # Prepare data
+        # Prepare data with proper types
         data = {
             'user_id': user_id,
             'device_id': prefs.device_id,
@@ -93,7 +91,6 @@ async def create_or_update_preferences(
             .execute()
         
         if existing.data:
-            # Update
             logger.info("Updating existing preferences")
             response = supabase.table('alert_preferences')\
                 .update(data)\
@@ -101,7 +98,6 @@ async def create_or_update_preferences(
                 .eq('device_id', prefs.device_id)\
                 .execute()
         else:
-            # Insert
             logger.info("Creating new preferences")
             data['created_at'] = datetime.now().isoformat()
             response = supabase.table('alert_preferences')\
@@ -147,7 +143,6 @@ async def check_alerts(
     try:
         logger.info(f"Checking alerts for device {device_id}, user {user_id}")
         
-        # Get latest weather data
         supabase = get_admin_client()
         if not supabase:
             supabase = get_supabase_client()
@@ -166,7 +161,6 @@ async def check_alerts(
                 "message": "No weather data available"
             }
         
-        # Process alerts
         sent = email_alerts.process_alerts(
             device_id,
             weather_response.data[0],

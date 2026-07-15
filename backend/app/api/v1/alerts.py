@@ -1,5 +1,5 @@
 """
-Alert API Endpoints
+Alert API Endpoints - Multi-User Support
 """
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -26,6 +26,7 @@ class AlertPreferences(BaseModel):
     rain_alert: bool = False
 
 def get_admin_client():
+    """Get Supabase admin client with service role key"""
     url = os.getenv('SUPABASE_URL')
     key = os.getenv('SUPABASE_SERVICE_KEY') or os.getenv('SUPABASE_KEY')
     if url and key:
@@ -37,13 +38,14 @@ async def get_preferences(
     user_id: str = Query(..., description="User ID"),
     device_id: str = Query(..., description="Device ID")
 ):
-    """Get user alert preferences"""
+    """Get user alert preferences - Filtered by user_id"""
     try:
         logger.info(f"Getting preferences for user {user_id}, device {device_id}")
         supabase = get_admin_client()
         if not supabase:
             supabase = get_supabase_client()
         
+        # ✅ FILTER BY user_id
         response = supabase.table('alert_preferences')\
             .select('*')\
             .eq('user_id', user_id)\
@@ -61,7 +63,7 @@ async def create_or_update_preferences(
     prefs: AlertPreferences,
     user_id: str = Query(..., description="User ID")
 ):
-    """Create or update alert preferences"""
+    """Create or update alert preferences - Scoped to user_id"""
     try:
         logger.info(f"Saving preferences for user {user_id}, device {prefs.device_id}")
         logger.info(f"Data: {prefs.dict()}")
@@ -70,6 +72,7 @@ async def create_or_update_preferences(
         if not supabase:
             supabase = get_supabase_client()
         
+        # ✅ ALWAYS include user_id
         data = {
             'user_id': user_id,
             'device_id': prefs.device_id,
@@ -82,6 +85,7 @@ async def create_or_update_preferences(
             'updated_at': datetime.now().isoformat()
         }
         
+        # ✅ Check existing with user_id
         existing = supabase.table('alert_preferences')\
             .select('id')\
             .eq('user_id', user_id)\
@@ -113,20 +117,26 @@ async def create_or_update_preferences(
 @router.get("/logs")
 async def get_alert_logs(
     device_id: str = Query(..., description="Device ID"),
+    user_id: str = Query(..., description="User ID"),
     limit: int = Query(50, ge=1, le=100)
 ):
-    """Get alert logs for a device"""
+    """Get alert logs for a device and user - ✅ Filtered by user_id"""
     try:
+        logger.info(f"Getting logs for user {user_id}, device {device_id}")
         supabase = get_admin_client()
         if not supabase:
             supabase = get_supabase_client()
         
+        # ✅ FILTER BY user_id
         response = supabase.table('alert_logs')\
             .select('*')\
             .eq('device_id', device_id)\
+            .eq('user_id', user_id)\
             .order('created_at', desc=True)\
             .limit(limit)\
             .execute()
+        
+        logger.info(f"Found {len(response.data)} logs")
         return {"status": "success", "data": response.data}
     except Exception as e:
         logger.error(f"Error fetching logs: {e}")
@@ -138,7 +148,7 @@ async def check_alerts(
     user_id: str = Query(..., description="User ID"),
     email: Optional[str] = Query(None, description="User Email (optional)")
 ):
-    """Manually check for alerts"""
+    """Manually check for alerts - ✅ Scoped to user_id"""
     try:
         logger.info(f"Checking alerts for device {device_id}, user {user_id}")
         
@@ -161,20 +171,15 @@ async def check_alerts(
                 "message": "No weather data available"
             }
         
-        # If email is provided, use it directly
-        if email:
-            logger.info(f"📧 Using provided email: {email}")
-            # We need to process alerts with email directly
-            # For now, let's handle it through the email_alerts service
-        
+        # ✅ Pass user_id and email to process_alerts
         sent = email_alerts.process_alerts(
             device_id,
             weather_response.data[0],
             user_id,
-            email  # Pass email as optional parameter
+            email  # Pass email if provided
         )
         
-        logger.info(f"Alerts sent: {sent}")
+        logger.info(f"Alerts sent for user {user_id}: {sent}")
         
         return {
             "status": "success",

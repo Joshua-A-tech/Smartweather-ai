@@ -92,7 +92,6 @@ function AlertSettings() {
     }
   };
 
-  // FIX: Ensure numeric values are sent as numbers, not strings
   const handleSavePreferences = async () => {
     if (!user) {
       setError('Please log in to save preferences');
@@ -104,7 +103,6 @@ function AlertSettings() {
     setSuccess(null);
 
     try {
-      // Convert to proper number types
       const payload = {
         device_id: selectedDevice,
         device_name: preferences.device_name || null,
@@ -115,7 +113,7 @@ function AlertSettings() {
         rain_alert: Boolean(preferences.rain_alert),
       };
 
-      console.log('Saving preferences (converted to numbers):', payload);
+      console.log('Saving preferences:', payload);
       console.log('User ID:', user.id);
 
       const response = await fetch(
@@ -146,6 +144,7 @@ function AlertSettings() {
     }
   };
 
+  // FIXED: Pass email to backend
   const handleCheckAlerts = async () => {
     if (!user) {
       setError('Please log in to check alerts');
@@ -157,10 +156,11 @@ function AlertSettings() {
     setSuccess(null);
 
     try {
-      const response = await fetch(
-        `${API_URL}/api/v1/alerts/check?device_id=${selectedDevice}&user_id=${user.id}`,
-        { method: 'POST' }
-      );
+      // ADDED: Pass email as parameter
+      const url = `${API_URL}/api/v1/alerts/check?device_id=${selectedDevice}&user_id=${user.id}&email=${encodeURIComponent(user.email)}`;
+      console.log('Checking alerts with URL:', url);
+      
+      const response = await fetch(url, { method: 'POST' });
       const data = await response.json();
       console.log('Check alerts response:', data);
 

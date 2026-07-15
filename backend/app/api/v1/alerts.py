@@ -20,9 +20,9 @@ class AlertPreferences(BaseModel):
     device_id: str
     device_name: Optional[str] = None
     device_location: Optional[str] = None
-    temp_high: Optional[float] = None  # Changed to float
-    temp_low: Optional[float] = None   # Changed to float
-    humidity_high: Optional[float] = None  # Changed to float
+    temp_high: Optional[float] = None
+    temp_low: Optional[float] = None
+    humidity_high: Optional[float] = None
     rain_alert: bool = False
 
 def get_admin_client():
@@ -70,7 +70,6 @@ async def create_or_update_preferences(
         if not supabase:
             supabase = get_supabase_client()
         
-        # Prepare data with proper types
         data = {
             'user_id': user_id,
             'device_id': prefs.device_id,
@@ -83,7 +82,6 @@ async def create_or_update_preferences(
             'updated_at': datetime.now().isoformat()
         }
         
-        # Check if exists
         existing = supabase.table('alert_preferences')\
             .select('id')\
             .eq('user_id', user_id)\
@@ -137,12 +135,14 @@ async def get_alert_logs(
 @router.post("/check")
 async def check_alerts(
     device_id: str = Query(..., description="Device ID"),
-    user_id: str = Query(..., description="User ID")
+    user_id: str = Query(..., description="User ID"),
+    email: Optional[str] = Query(None, description="User Email (optional)")
 ):
     """Manually check for alerts"""
     try:
         logger.info(f"Checking alerts for device {device_id}, user {user_id}")
         
+        # Get latest weather data
         supabase = get_admin_client()
         if not supabase:
             supabase = get_supabase_client()
@@ -161,10 +161,17 @@ async def check_alerts(
                 "message": "No weather data available"
             }
         
+        # If email is provided, use it directly
+        if email:
+            logger.info(f"📧 Using provided email: {email}")
+            # We need to process alerts with email directly
+            # For now, let's handle it through the email_alerts service
+        
         sent = email_alerts.process_alerts(
             device_id,
             weather_response.data[0],
-            user_id
+            user_id,
+            email  # Pass email as optional parameter
         )
         
         logger.info(f"Alerts sent: {sent}")

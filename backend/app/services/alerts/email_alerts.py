@@ -27,44 +27,30 @@ class EmailAlertService:
             logger.warning("⚠️ RESEND_API_KEY not set. Email alerts disabled.")
     
     def get_user_email(self, user_id: str) -> Optional[str]:
-        """Get user email from Supabase Auth - try multiple methods"""
+        """Get user email from Supabase Auth"""
         try:
-            # Method 1: Try to get from supabase admin (requires service role)
-            try:
-                response = self.supabase.auth.admin.get_user_by_id(user_id)
-                if response and response.user:
-                    return response.user.email
-            except Exception as e:
-                logger.debug(f"Admin API method failed: {e}")
-            
-            # Method 2: Try to get from auth.users table directly (if accessible)
-            try:
-                response = self.supabase.table('auth.users')\
-                    .select('email')\
-                    .eq('id', user_id)\
-                    .execute()
-                if response.data and len(response.data) > 0:
-                    return response.data[0].get('email')
-            except Exception as e:
-                logger.debug(f"Direct table method failed: {e}")
-            
-            # Method 3: Get from user_profiles table if it exists
-            try:
-                response = self.supabase.table('user_profiles')\
-                    .select('email')\
-                    .eq('user_id', user_id)\
-                    .execute()
-                if response.data and len(response.data) > 0:
-                    return response.data[0].get('email')
-            except Exception as e:
-                logger.debug(f"User profiles method failed: {e}")
-            
-            logger.error(f"Could not find email for user {user_id}")
-            return None
-            
+            # Try to get from auth.users table directly
+            response = self.supabase.table('auth.users')\
+                .select('email')\
+                .eq('id', user_id)\
+                .execute()
+            if response.data and len(response.data) > 0:
+                return response.data[0].get('email')
         except Exception as e:
-            logger.error(f"Error fetching user email: {e}")
-            return None
+            logger.debug(f"Could not fetch email from auth.users: {e}")
+        
+        try:
+            # Try to get from user_profiles table if it exists
+            response = self.supabase.table('user_profiles')\
+                .select('email')\
+                .eq('user_id', user_id)\
+                .execute()
+            if response.data and len(response.data) > 0:
+                return response.data[0].get('email')
+        except Exception as e:
+            logger.debug(f"Could not fetch email from user_profiles: {e}")
+        
+        return None
     
     def get_alert_preferences(self, user_id: str, device_id: str) -> Dict:
         """Get user alert preferences from Supabase"""
@@ -89,7 +75,6 @@ class EmailAlertService:
         if not weather_data or not preferences:
             return alerts
         
-        # Ensure numeric values
         try:
             temp = float(weather_data.get('temperature', 0))
             humidity = float(weather_data.get('humidity', 0))
@@ -99,13 +84,11 @@ class EmailAlertService:
             logger.error(f"Error converting weather data: {e}")
             return alerts
         
-        # Get thresholds with defaults
         temp_high = preferences.get('temp_high')
         temp_low = preferences.get('temp_low')
         humidity_high = preferences.get('humidity_high')
         rain_alert = preferences.get('rain_alert', False)
         
-        # Convert to float if not None
         if temp_high is not None:
             temp_high = float(temp_high)
         if temp_low is not None:
@@ -113,9 +96,7 @@ class EmailAlertService:
         if humidity_high is not None:
             humidity_high = float(humidity_high)
         
-        # DEBUG: Log everything
-        logger.info("🔍 ALERT CHECK: temp={}°C, high={}, low={}, humidity={}%, humidity_high={}".format(
-            temp, temp_high, temp_low, humidity, humidity_high))
+        logger.info(f"🔍 ALERT CHECK: temp={temp}°C, high={temp_high}, low={temp_low}, humidity={humidity}%, humidity_high={humidity_high}")
         
         # High Temperature Alert
         if temp_high is not None and temp > temp_high:
@@ -141,7 +122,7 @@ class EmailAlertService:
         
         # Rain Alert
         if rain_alert and is_raining:
-            logger.info(f"☔ RAIN ALERT: Rain detected with {rainfall}mm")
+            logger.info(f"☔ RAIN ALERT: Rain detected")
             alerts.append({
                 'type': 'rain',
                 'severity': 'info',
@@ -163,6 +144,8 @@ class EmailAlertService:
         
         if not alerts:
             logger.info("✅ No alerts triggered. Everything is normal!")
+        else:
+            logger.info(f"📊 {len(alerts)} alert(s) detected")
         
         return alerts
     
@@ -199,7 +182,6 @@ class EmailAlertService:
             return False
     
     def _build_email_html(self, alert: Dict, device_name: str, device_location: str) -> str:
-        """Build HTML email content"""
         alert_color = '#ff6b6b' if alert['severity'] == 'warning' else '#ffd93d'
         
         return f"""
@@ -210,12 +192,7 @@ class EmailAlertService:
                     .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
                     .header {{ background: #0066CC; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
                     .content {{ padding: 20px; background: #f9f9f9; border: 1px solid #ddd; }}
-                    .alert-box {{ 
-                        background: {alert_color};
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin: 15px 0;
-                    }}
+                    .alert-box {{ background: {alert_color}; padding: 15px; border-radius: 8px; margin: 15px 0; }}
                     .info {{ color: #666; font-size: 14px; }}
                     .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #999; }}
                 </style>
@@ -262,7 +239,7 @@ class EmailAlertService:
         }
         return actions.get(alert_type, '<li>Monitor the situation</li><li>Stay safe</li>')
     
-    def process_alerts(self, device_id: str, weather_data: Dict, user_id: str) -> int:
+    def process_alerts(self, device_id: str, weather_data: Dict, user_id: str, email: Optional[str] = None) -> int:
         """Process alerts for a device and send emails if triggered"""
         try:
             # Get user preferences
@@ -276,11 +253,11 @@ class EmailAlertService:
             if not alerts:
                 return 0
             
-            # Get user email
-            email = self.get_user_email(user_id)
-            if not email:
+            # Get user email (use provided email or fetch from DB)
+            recipient_email = email or self.get_user_email(user_id)
+            if not recipient_email:
                 logger.warning(f"No email found for user {user_id}")
-                # Still return the count of alerts detected (for frontend display)
+                # Return the count of alerts detected even if email not found
                 return len(alerts)
             
             # Get device info
@@ -292,11 +269,11 @@ class EmailAlertService:
             # Send each alert
             sent_count = 0
             for alert in alerts:
-                if self.send_alert_email(email, alert, device_info):
+                if self.send_alert_email(recipient_email, alert, device_info):
                     sent_count += 1
-                    self._log_alert(device_id, alert, email)
+                    self._log_alert(device_id, alert, recipient_email)
             
-            logger.info(f"✅ {sent_count} alert(s) sent")
+            logger.info(f"✅ {sent_count} alert(s) sent to {recipient_email}")
             return sent_count
             
         except Exception as e:

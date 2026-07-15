@@ -27,10 +27,41 @@ class EmailAlertService:
             logger.warning("⚠️ RESEND_API_KEY not set. Email alerts disabled.")
     
     def get_user_email(self, user_id: str) -> Optional[str]:
-        """Get user email from Supabase"""
+        """Get user email from Supabase Auth - try multiple methods"""
         try:
-            response = self.supabase.auth.admin.get_user_by_id(user_id)
-            return response.user.email if response.user else None
+            # Method 1: Try to get from supabase admin (requires service role)
+            try:
+                response = self.supabase.auth.admin.get_user_by_id(user_id)
+                if response and response.user:
+                    return response.user.email
+            except Exception as e:
+                logger.debug(f"Admin API method failed: {e}")
+            
+            # Method 2: Try to get from auth.users table directly (if accessible)
+            try:
+                response = self.supabase.table('auth.users')\
+                    .select('email')\
+                    .eq('id', user_id)\
+                    .execute()
+                if response.data and len(response.data) > 0:
+                    return response.data[0].get('email')
+            except Exception as e:
+                logger.debug(f"Direct table method failed: {e}")
+            
+            # Method 3: Get from user_profiles table if it exists
+            try:
+                response = self.supabase.table('user_profiles')\
+                    .select('email')\
+                    .eq('user_id', user_id)\
+                    .execute()
+                if response.data and len(response.data) > 0:
+                    return response.data[0].get('email')
+            except Exception as e:
+                logger.debug(f"User profiles method failed: {e}")
+            
+            logger.error(f"Could not find email for user {user_id}")
+            return None
+            
         except Exception as e:
             logger.error(f"Error fetching user email: {e}")
             return None
@@ -59,10 +90,14 @@ class EmailAlertService:
             return alerts
         
         # Ensure numeric values
-        temp = float(weather_data.get('temperature', 0))
-        humidity = float(weather_data.get('humidity', 0))
-        is_raining = weather_data.get('is_raining', False)
-        rainfall = float(weather_data.get('rainfall', 0))
+        try:
+            temp = float(weather_data.get('temperature', 0))
+            humidity = float(weather_data.get('humidity', 0))
+            is_raining = weather_data.get('is_raining', False)
+            rainfall = float(weather_data.get('rainfall', 0))
+        except Exception as e:
+            logger.error(f"Error converting weather data: {e}")
+            return alerts
         
         # Get thresholds with defaults
         temp_high = preferences.get('temp_high')
@@ -78,8 +113,9 @@ class EmailAlertService:
         if humidity_high is not None:
             humidity_high = float(humidity_high)
         
-        # Debug logging
-        logger.info(f"📊 Checking alerts: temp={temp}, temp_high={temp_high}, temp_low={temp_low}")
+        # DEBUG: Log everything
+        logger.info("🔍 ALERT CHECK: temp={}°C, high={}, low={}, humidity={}%, humidity_high={}".format(
+            temp, temp_high, temp_low, humidity, humidity_high))
         
         # High Temperature Alert
         if temp_high is not None and temp > temp_high:
@@ -124,6 +160,9 @@ class EmailAlertService:
                 'message': f'Humidity has reached {humidity:.1f}%, exceeding your threshold of {humidity_high:.1f}%',
                 'data': {'humidity': humidity, 'threshold': humidity_high}
             })
+        
+        if not alerts:
+            logger.info("✅ No alerts triggered. Everything is normal!")
         
         return alerts
     
@@ -235,14 +274,14 @@ class EmailAlertService:
             # Check for alerts
             alerts = self.check_alerts(weather_data, preferences)
             if not alerts:
-                logger.info("✅ No alerts triggered. Everything is normal!")
                 return 0
             
             # Get user email
             email = self.get_user_email(user_id)
             if not email:
                 logger.warning(f"No email found for user {user_id}")
-                return 0
+                # Still return the count of alerts detected (for frontend display)
+                return len(alerts)
             
             # Get device info
             device_info = {

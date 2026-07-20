@@ -10,22 +10,15 @@ const EnhancedAnalytics = ({ data }) => {
   const [metric, setMetric] = useState('temperature');
   const [chartType, setChartType] = useState('line');
 
-  // Process data for charts
   const processData = (rawData) => {
     if (!rawData || rawData.length === 0) return [];
     
     let filteredData = rawData;
-    
-    if (view === '7d') {
-      filteredData = rawData.slice(-7);
-    } else if (view === '30d') {
-      filteredData = rawData.slice(-30);
-    } else {
-      filteredData = rawData.slice(-24);
-    }
+    if (view === '7d') filteredData = rawData.slice(-7);
+    else if (view === '30d') filteredData = rawData.slice(-30);
+    else filteredData = rawData.slice(-24);
 
     return filteredData.map((item, index) => ({
-      time: index + 1,
       label: `${index + 1}h`,
       temperature: item.temperature || 0,
       humidity: item.humidity || 0,
@@ -79,7 +72,6 @@ const EnhancedAnalytics = ({ data }) => {
             <Bar dataKey={metric} fill={color} />
           </BarChart>
         );
-      
       case 'area':
         return (
           <AreaChart {...commonProps}>
@@ -91,7 +83,6 @@ const EnhancedAnalytics = ({ data }) => {
             <Area type="monotone" dataKey={metric} stroke={color} fill={color} fillOpacity={0.3} />
           </AreaChart>
         );
-      
       case 'composed':
         return (
           <ComposedChart {...commonProps}>
@@ -104,7 +95,6 @@ const EnhancedAnalytics = ({ data }) => {
             <Line type="monotone" dataKey={metric} stroke="#8884d8" strokeWidth={2} />
           </ComposedChart>
         );
-      
       default:
         return (
           <LineChart {...commonProps}>
@@ -151,11 +141,11 @@ const EnhancedAnalytics = ({ data }) => {
             onChange={(e) => setMetric(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="temperature">Temperature</option>
-            <option value="humidity">Humidity</option>
-            <option value="pressure">Pressure</option>
-            <option value="rainfall">Rainfall</option>
-            <option value="light">Light</option>
+            <option value="temperature">🌡️ Temperature</option>
+            <option value="humidity">💧 Humidity</option>
+            <option value="pressure">📊 Pressure</option>
+            <option value="rainfall">🌧️ Rainfall</option>
+            <option value="light">☀️ Light</option>
           </select>
         </div>
 
@@ -166,18 +156,16 @@ const EnhancedAnalytics = ({ data }) => {
             onChange={(e) => setChartType(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="line">Line Chart</option>
-            <option value="bar">Bar Chart</option>
-            <option value="area">Area Chart</option>
-            <option value="composed">Composed Chart</option>
+            <option value="line">📈 Line Chart</option>
+            <option value="bar">📊 Bar Chart</option>
+            <option value="area">📉 Area Chart</option>
+            <option value="composed">📊 Composed Chart</option>
           </select>
         </div>
 
         <div className="flex items-end">
           <button
-            onClick={() => {
-              alert('📥 Export feature coming soon!');
-            }}
+            onClick={() => alert('📥 Export feature coming soon!')}
             className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200"
           >
             📥 Export Chart

@@ -31,12 +31,14 @@
     "web-push": "^3.6.7",
     "web-vitals": "^2.1.4"
   },
+  "devDependencies": {
+    "typescript": "^4.9.5"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "vercel-build": "./vercel-build.sh"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
@@ -55,5 +57,11 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "overrides": {
+    "typescript": "^4.9.5"
+  },
+  "resolutions": {
+    "typescript": "^4.9.5"
   }
 }

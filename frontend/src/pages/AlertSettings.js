@@ -37,7 +37,7 @@ function AlertSettings() {
       fetchPreferences();
       fetchLogs();
     }
-  }, [selectedDevice]);
+  }, [selectedDevice, user]); // Added user as dependency
 
   const fetchDevices = async () => {
     try {
@@ -60,8 +60,14 @@ function AlertSettings() {
     }
   };
 
+  // FIXED: Fetch preferences with user_id filter
   const fetchPreferences = async () => {
-    if (!user || !selectedDevice) return;
+    // Check if user exists before fetching
+    if (!user || !user.id || !selectedDevice) {
+      console.log('No user or device selected, skipping fetch');
+      return;
+    }
+
     try {
       console.log('Fetching preferences for user:', user.id, 'device:', selectedDevice);
       const response = await fetch(
@@ -71,17 +77,33 @@ function AlertSettings() {
       console.log('Preferences response:', data);
       if (data.data && data.data.length > 0) {
         setPreferences(data.data[0]);
+      } else {
+        // Reset to defaults when no preferences found
+        setPreferences({
+          temp_high: 35,
+          temp_low: 0,
+          humidity_high: 80,
+          rain_alert: true,
+        });
       }
     } catch (err) {
       console.error('Error fetching preferences:', err);
+      // Reset to defaults on error
+      setPreferences({
+        temp_high: 35,
+        temp_low: 0,
+        humidity_high: 80,
+        rain_alert: true,
+      });
     }
   };
 
+  // FIXED: Fetch logs with user_id filter
   const fetchLogs = async () => {
-    if (!selectedDevice) return;
+    if (!selectedDevice || !user || !user.id) return;
     try {
       const response = await fetch(
-        `${API_URL}/api/v1/alerts/logs?device_id=${selectedDevice}&limit=20`
+        `${API_URL}/api/v1/alerts/logs?device_id=${selectedDevice}&user_id=${user.id}&limit=20`
       );
       const data = await response.json();
       if (data.data) {
@@ -159,7 +181,7 @@ function AlertSettings() {
       // ADDED: Pass email as parameter
       const url = `${API_URL}/api/v1/alerts/check?device_id=${selectedDevice}&user_id=${user.id}&email=${encodeURIComponent(user.email)}`;
       console.log('Checking alerts with URL:', url);
-      
+
       const response = await fetch(url, { method: 'POST' });
       const data = await response.json();
       console.log('Check alerts response:', data);
